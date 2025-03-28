@@ -1,0 +1,26 @@
+Initial project structure for HerpAI-Ingestion
+
+This commit establishes the foundation for the HerpAI-Ingestion project, a biomedical data ingestion library that extends HerpAI-Lib. The structure follows proper software engineering practices and extends the existing functionality of HerpAI-Lib rather than duplicating it.
+
+Key components added:
+- Biomedical-specific entity models (Document, IngestionState, ScheduledJob)
+- Repository interfaces with domain-specific methods
+- Specifications for common biomedical data queries
+- Source connector architecture for different biomedical data sources
+- CLI command structure for user interaction
+- BiomedicalAppConfig extending HerpAI-Lib's AppConfig
+
+This implementation properly leverages existing HerpAI-Lib functionality:
+- Uses the engine for dependency injection
+- Extends the BaseEntity for domain models
+- Uses IRepository for base CRUD operations
+- Uses the Specification pattern for queries
+- Follows the AppConfig pattern for configuration
+
+Technical highlights:
+- Clean separation of interfaces and implementations
+- Type annotations and protocol-based interfaces
+- Domain-specific models for biomedical data
+- CLI powered by Typer with rich console output
+
+Next steps will involve implementing the source connectors, storage services, and processing functionality.
