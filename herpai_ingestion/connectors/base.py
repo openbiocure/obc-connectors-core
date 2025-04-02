@@ -1,4 +1,4 @@
-from typing import Protocol, List, Dict, Any, Optional, AsyncIterator
+from typing import Protocol, List, Dict, Any, Optional, AsyncIterator, Iterator
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import logging
@@ -64,4 +64,17 @@ class BaseSourceConnector(ABC):
     @abstractmethod
     async def get_source_name(self) -> str:
         """Get the name of the source."""
+        pass
+
+class BaseConnector(ABC):
+    """Base interface for all source connectors."""
+    
+    @abstractmethod
+    def connect(self) -> bool:
+        """Establish connection to the source."""
+        pass
+    
+    @abstractmethod
+    def fetch_documents(self, query: Dict[str, Any]) -> Iterator[Dict[str, Any]]:
+        """Fetch documents from the source."""
         pass
