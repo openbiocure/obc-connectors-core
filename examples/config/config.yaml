@@ -1,0 +1,37 @@
+# Storage Configuration
+storage:
+  type: azure
+  azure:
+    account_name: your_account
+    account_key: your_key
+    container_name: papers
+
+# Source Configurations
+sources:
+  pubmed:
+    api_key: your_pubmed_api_key
+    batch_size: 100
+    default_query: "herpes AND treatment"
+    max_results: 1000
+
+# Processing Configuration
+processing:
+  grobid:
+    url: http://localhost:8070
+    timeout: 300 # seconds
+    max_retries: 3
+
+# Worker Configuration
+workers:
+  rabbitmq:
+    url: amqp://guest:guest@localhost:5672/
+    queues:
+      ingestion: ingestion_queue
+      processing: processing_queue
+  monitoring:
+    update_interval: 60 # seconds
+
+# Database Configuration
+database:
+  type: sqlite
+  connection: ":memory:"
