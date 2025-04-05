@@ -1520,4 +1520,3 @@ processing:
     model: biobert
     threshold: 0.7
 ```
-    
