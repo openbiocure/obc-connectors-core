@@ -619,139 +619,6 @@ configuration:
       required: false
       default: 100
       description: Number of items to retrieve in each batch
-```."""
-        pass
-    
-    @property
-    @abstractmethod
-    def capabilities(self) -> Dict[str, bool]:
-        """Get the connector capabilities."""
-        pass
-```
-
-Additional utility classes in the SDK:
-
-```python
-class ConnectorError(Exception):
-    """Base exception for connector-related errors."""
-    pass
-
-class AuthenticationError(ConnectorError):
-    """Exception raised for authentication failures."""
-    pass
-
-class RateLimitExceeded(ConnectorError):
-    """Exception raised when rate limits are exceeded."""
-    pass
-
-class RateLimiter:
-    """Utility for managing API rate limits."""
-    
-    def __init__(self, requests_per_second: float):
-        self.requests_per_second = requests_per_second
-        # Implementation details...
-    
-    async def acquire(self):
-        """Acquire permission to make a request."""
-        # Implementation details...
-```
-
-### Connector Registry
-
-The ConnectorRegistry manages the discovery, registration, and lifecycle of connectors:
-
-```python
-class ConnectorRegistry:
-    """Manages connector discovery, registration, and lifecycle."""
-    
-    def __init__(self, type_finder: ITypeFinder):
-        self._type_finder = type_finder
-        self._connectors = {}
-        self._specifications = {}
-    
-    async def discover_connectors(self) -> List[str]:
-        """Discover available connectors."""
-        connector_classes = self._type_finder.find_classes_of_type(
-            BaseConnector, only_concrete=True
-        )
-        
-        for connector_class in connector_classes:
-            try:
-                # Create an instance
-                connector = connector_class()
-                
-                # Register the connector
-                await self.register_connector(connector)
-                
-            except Exception as e:
-                logger.error(f"Error registering connector {connector_class.__name__}: {str(e)}")
-        
-        return list(self._connectors.keys())
-    
-    async def register_connector(self, connector: BaseConnector) -> None:
-        """Register a connector instance."""
-        name = connector.name
-        self._connectors[name] = connector
-        
-        # Load the connector specification
-        spec_path = self._find_specification_path(name)
-        if spec_path:
-            self._specifications[name] = self._load_specification(spec_path)
-        
-        logger.info(f"Registered connector: {name}")
-    
-    def get_connector(self, name: str) -> Optional[BaseConnector]:
-        """Get a connector by name."""
-        return self._connectors.get(name)
-    
-    def get_specification(self, name: str) -> Optional[Dict[str, Any]]:
-        """Get a connector specification by name."""
-        return self._specifications.get(name)
-    
-    def _find_specification_path(self, name: str) -> Optional[str]:
-        """Find the specification file for a connector."""
-        # Implementation details...
-    
-    def _load_specification(self, path: str) -> Dict[str, Any]:
-        """Load a connector specification from file."""
-        # Implementation details...
-```
-
-### Connector Specifications
-
-Each connector includes a YAML specification file that defines its capabilities, configuration options, and requirements:
-
-```yaml
-name: pubmed
-display_name: PubMed
-description: Connects to the PubMed/NCBI API for biomedical literature
-version: 1.0.0
-
-capabilities:
-  supports_fulltext: false
-  supports_advanced_search: true
-  supports_date_filtering: true
-  requires_authentication: false
-
-api:
-  base_url: https://eutils.ncbi.nlm.nih.gov/entrez/eutils/
-  rate_limit:
-    requests_per_second: 3
-    with_api_key: 10
-
-configuration:
-  properties:
-    - name: api_key
-      type: string
-      required: false
-      description: NCBI API key for higher rate limits
-      sensitive: true
-    
-    - name: batch_size
-      type: integer
-      required: false
-      default: 100
-      description: Number of items to retrieve in each batch
 ```
 
 ## Data Processing Pipeline
@@ -1486,7 +1353,7 @@ storage:
     account_key: ${AZURE_STORAGE_KEY}
     container_name: herpai-datalake
     prefix: documents/
-
+  
 connectors:
   pubmed:
     enabled: true
@@ -1509,7 +1376,7 @@ startup_tasks:
     scan_paths:
       - herpai_ingestion.connectors
       - custom_connectors
-
+  
 scheduler:
   enabled: true
   jobs:
@@ -1855,7 +1722,7 @@ if __name__ == "__main__":
 
 ### CLI Usage Examples
 
-```bash
+   ```bash
 # List all scheduled jobs
 herpai-ingestion scheduler list
 
@@ -1881,4 +1748,100 @@ herpai-ingestion scheduler run 1234-5678-90ab-cdef
 
 # Delete a job
 herpai-ingestion scheduler delete 1234-5678-90ab-cdef
-```# HerpAI-Ingestion: Solution Design Document
+```
+
+## Connector System
+
+### Dynamic Connector Registration
+
+The HerpAI Connector SDK uses a dynamic registration system for connectors. Instead of hardcoding connector types, each connector registers itself with the system at runtime. This allows for:
+
+- Dynamic discovery of available connectors
+- Extensibility without modifying the core SDK
+- Custom connector implementations
+- Runtime validation of connector configurations
+
+#### Registering a Connector
+
+To create a new connector:
+
+1. Register your connector type:
+```python
+from herpai_connector_sdk.interfaces.connector_type import ConnectorTypeRegistry
+
+# Register at module level
+ConnectorTypeRegistry.register("my_connector", "My Custom Connector")
+
+class MyConnector(BaseConnector):
+    """Implementation of a custom connector."""
+    def __init__(self):
+        super().__init__()
+        # Your initialization code
+```
+
+2. Create a connector specification file (`connector.yaml`):
+```yaml
+name: my_connector
+display_name: My Custom Connector
+description: Description of what your connector does
+version: 1.0.0
+
+capabilities:
+  supports_fulltext: false
+  supports_advanced_search: true
+  supports_date_filtering: true
+  requires_authentication: false
+
+api:
+  base_url: https://api.example.com/v1/
+  rate_limit:
+    requests_per_second: 3
+    with_api_key: 10
+
+configuration:
+  properties:
+    - name: api_key
+      type: string
+      required: false
+      description: API key for authentication
+      sensitive: true
+```
+
+3. Configure your connector:
+```python
+from herpai_connector_sdk.interfaces import ConnectorConfig
+
+config = ConnectorConfig(
+    type="my_connector",  # Must match registered type
+    name="my_instance",
+    api_key="optional_key"
+)
+```
+
+#### Working with Connector Types
+
+The `ConnectorTypeRegistry` provides methods to work with connector types:
+
+```python
+from herpai_connector_sdk.interfaces.connector_type import ConnectorTypeRegistry
+
+# List all registered connectors
+available_types = ConnectorTypeRegistry.list_types()
+# {'pubmed': 'PubMed/NCBI E-utilities API', 'my_connector': 'My Custom Connector'}
+
+# Check if a type is valid
+is_valid = ConnectorTypeRegistry.is_valid("my_connector")  # True
+
+# Get display name for a type
+display_name = ConnectorTypeRegistry.get("my_connector")  # "My Custom Connector"
+```
+
+#### Built-in Connectors
+
+The system includes several built-in connectors:
+
+- **PubMed**: Access to PubMed/NCBI E-utilities API
+- **Europe PMC**: Access to Europe PMC API
+- **arXiv**: (Future) Access to arXiv API
+
+Each connector registers itself when its module is imported, making it available for use.

@@ -1,0 +1,69 @@
+[build-system]
+requires = [ "hatchling" ]
+build-backend = "hatchling.build"
+
+
+[project]
+name = "herpai-ingestion"
+version = "0.2.0"
+description = "HerpAI Ingestion System for biomedical literature"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+dependencies = [
+"aiohttp>=3.8.0",
+"sqlalchemy>=2.0.0",
+"pydantic>=2.0.0",
+"typer>=0.9.0",
+"rich>=13.0.0",
+"pyyaml>=6.0.0",
+"boto3>=1.26.0",
+"azure-storage-blob>=12.0.0",
+"minio>=7.0.0"
+]
+
+
+[[project.authors]]
+name = "OpenBioCure Contributors"
+email = "openbiocure@herpai.com"
+
+
+[project.optional-dependencies]
+dev = [
+"pytest>=7.0.0",
+"pytest-asyncio>=0.21.0",
+"pytest-cov>=4.0.0",
+"black>=23.0.0",
+"isort>=5.0.0",
+"mypy>=1.0.0",
+"ruff>=0.1.0"
+]
+
+
+[tool.hatch.build.targets.wheel]
+packages = [ "herpai_connector_sdk", "herpai_ingestion", "connectors" ]
+
+
+[tool.black]
+line-length = 100
+target-version = [ "py39" ]
+
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+select = [ "E", "F", "B", "I" ]

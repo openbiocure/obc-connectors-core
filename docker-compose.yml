@@ -1,0 +1,137 @@
+version: '3.8'
+
+networks:
+  herpai-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  qdrant_data:
+  minio_data:
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: herpai-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-herpai}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-herpai}
+      POSTGRES_DB: ${DB_NAME:-herpai_ingestion}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${DB_USER:-herpai}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - herpai-net
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: herpai-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - herpai-net
+
+  qdrant:
+    image: qdrant/qdrant
+    container_name: herpai-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - herpai-net
+
+  minio:
+    image: minio/minio
+    container_name: herpai-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - herpai-net
+
+  grobid:
+    image: lfoppiano/grobid:0.7.1
+    container_name: herpai-grobid
+    ports:
+      - "8070:8070"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8070/api/isalive"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - herpai-net
+
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: herpai-dev
+    command: sleep infinity
+    volumes:
+      - .:/app
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=herpai
+      - DB_PASSWORD=herpai
+      - DB_NAME=herpai_ingestion
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASSWORD=guest
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+      - GROBID_URL=http://grobid:8070
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      grobid:
+        condition: service_healthy
+    networks:
+      - herpai-net
