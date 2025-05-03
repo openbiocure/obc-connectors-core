@@ -64,6 +64,16 @@ class ConnectorCapability(Enum):
     This is crucial for maintaining up-to-date document collections without
     downloading everything again."""
 
+    SUPPORTS_NATIVE_PAGINATION = "supports_native_pagination"
+    """Indicates if the connector supports native pagination from the data source.
+    When True, the connector can use the source's built-in pagination mechanisms
+    (like cursor-based or offset-based pagination) for efficient data retrieval.
+    This is crucial for:
+    - Memory-efficient processing of large result sets
+    - Respecting rate limits and resource constraints
+    - Implementing reliable resumable downloads
+    - Maintaining consistent ordering across pages"""
+
     @classmethod
     def to_dict(cls, capabilities: set["ConnectorCapability"]) -> Dict[str, bool]:
         """Convert a set of capabilities to a dictionary.
