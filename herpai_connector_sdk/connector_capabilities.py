@@ -12,8 +12,44 @@ class ConnectorCapability(Enum):
     2. Runtime behavior decisions
     3. API documentation and client expectations
     4. Configuration validation
+    
+    Content Type Capabilities:
+    Connectors must specify at least one content type capability to indicate
+    what kind of data they can handle. This helps the ingestion system properly
+    process and store the data.
     """
     
+    # Content Type Capabilities
+    SUPPORTS_DOCUMENT_CONTENT = "supports_document_content"
+    """Indicates if the connector handles traditional document-based content.
+    This includes PDFs, academic papers, articles, or any content that follows
+    a document structure with metadata, full text, and possibly attachments."""
+    
+    SUPPORTS_JSON_CONTENT = "supports_json_content"
+    """Indicates if the connector handles JSON-structured data.
+    This is common for API-based sources where data is already structured
+    and doesn't follow traditional document formats. Examples include:
+    - REST API responses
+    - Configuration data
+    - Structured metadata collections"""
+    
+    SUPPORTS_STRING_CONTENT = "supports_string_content"
+    """Indicates if the connector handles plain text or string-based content.
+    This is suitable for sources that provide simple text data without
+    complex structure. Examples include:
+    - Log files
+    - Plain text feeds
+    - Simple string-based APIs"""
+    
+    SUPPORTS_BINARY_CONTENT = "supports_binary_content"
+    """Indicates if the connector can handle binary data.
+    This is relevant for sources that provide non-text content that needs
+    special processing. Examples include:
+    - Image data
+    - Audio files
+    - Custom binary formats"""
+    
+    # Feature Capabilities
     SUPPORTS_FULLTEXT = "supports_fulltext"
     """Indicates if the connector can retrieve full text content of documents.
     When True, the connector can fetch complete document content beyond just metadata.
@@ -101,4 +137,28 @@ class ConnectorCapability(Enum):
                 ...
             }
         """
-        return {cap.value: (cap in capabilities) for cap in cls} 
+        return {cap.value: (cap in capabilities) for cap in cls}
+        
+    @classmethod
+    def validate_content_type_capability(cls, capabilities: set["ConnectorCapability"]) -> bool:
+        """Validate that at least one content type capability is specified.
+        
+        Args:
+            capabilities: Set of ConnectorCapability values to validate
+            
+        Returns:
+            bool: True if at least one content type capability is present
+            
+        Example:
+            >>> caps = {ConnectorCapability.SUPPORTS_JSON_CONTENT, 
+            ...        ConnectorCapability.REQUIRES_AUTHENTICATION}
+            >>> ConnectorCapability.validate_content_type_capability(caps)
+            True
+        """
+        content_type_capabilities = {
+            cls.SUPPORTS_DOCUMENT_CONTENT,
+            cls.SUPPORTS_JSON_CONTENT,
+            cls.SUPPORTS_STRING_CONTENT,
+            cls.SUPPORTS_BINARY_CONTENT
+        }
+        return bool(capabilities & content_type_capabilities) 

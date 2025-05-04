@@ -1,0 +1,40 @@
+name: pubmed
+display_name: PubMed/NCBI E-utilities
+description: Connects to the PubMed/NCBI E-utilities API for biomedical literature
+version: 1.0.0
+
+capabilities:
+  supports_fulltext: false
+  supports_advanced_search: true
+  supports_date_filtering: true
+  requires_authentication: false
+  supports_native_pagination: true
+  content_types:
+    - SUPPORTS_DOCUMENT_CONTENT
+    - SUPPORTS_JSON_CONTENT
+
+api:
+  base_url: https://eutils.ncbi.nlm.nih.gov/entrez/eutils/
+  rate_limit:
+    requests_per_second: 3
+    with_api_key: 10
+
+configuration:
+  properties:
+    - name: api_key
+      type: string
+      required: false
+      description: NCBI API key for higher rate limits
+      sensitive: true
+
+    - name: batch_size
+      type: integer
+      required: false
+      default: 100
+      description: Number of items to retrieve in each batch
+
+    - name: max_retries
+      type: integer
+      required: false
+      default: 3
+      description: Maximum number of retry attempts for failed requests
