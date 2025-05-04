@@ -1,183 +1,222 @@
 # HerpAI-Ingestion Makefile
 
-# Variables
-PYTHON := python3
-VENV_NAME := venv
-VENV_BIN := $(VENV_NAME)/bin
-VENV_ACTIVATE := $(VENV_BIN)/activate
-PYTHON_VERSION := 3.9
-PACKAGE_NAME := herpai-ingestion
-GITHUB_USERNAME := openbiocure
-GITHUB_REPO := HerpAI-Ingestion
+PYTHON_VERSION := 3
+VENV_DIR := .venv
+CORELIB_PATH ?= ../HerpAI-Lib
+CORELIB_NAME := openbiocure-corelib
 
-# Test and coverage settings
-TESTS_DIR := tests
-COVERAGE_OPTIONS := --cov=herpai_ingestion --cov=herpai_connector_sdk --cov=connectors --cov-report=term-missing
-TEST_OPTIONS := -v -ra --strict-markers
+TEST_DIR := tests
+UNIT_TEST_DIR := $(TEST_DIR)/unit
+INTEGRATION_TEST_DIR := $(TEST_DIR)/integration
+CONNECTOR_TEST_DIR := $(TEST_DIR)/connectors
 
-# Linting settings
-FLAKE8_OPTIONS := --max-line-length=88 --extend-ignore=E203
-MYPY_OPTIONS := --ignore-missing-imports --strict
-BLACK_OPTIONS := --line-length=88
-ISORT_OPTIONS := --profile black
+PYTEST := $(VENV_DIR)/bin/pytest
+PYTEST_ARGS := -v
 
-# OS specific commands
-ifeq ($(OS),Windows_NT)
-	VENV_BIN := $(VENV_NAME)/Scripts
-	VENV_ACTIVATE := $(VENV_BIN)/activate
-	PYTHON := python
-	# Handle path separators for Windows
-	SEP := \\
-else
-	SEP := /
-endif
+BLACK := $(VENV_DIR)/bin/black
+ISORT := $(VENV_DIR)/bin/isort
+FLAKE8 := $(VENV_DIR)/bin/flake8
+MYPY := $(VENV_DIR)/bin/mypy
 
-# Define command prefix to activate virtualenv before running commands
-VENV_RUN := . $(VENV_ACTIVATE) &&
+SRC_DIRS := herpai_ingestion herpai_connector_sdk connectors tests
 
-# Colors for terminal output
-BLUE := \033[0;34m
-GREEN := \033[0;32m
-RED := \033[0;31m
-YELLOW := \033[0;33m
-NC := \033[0m # No Color
+DOCS_DIR := docs
+DOCS_BUILD_DIR := $(DOCS_DIR)/_build
 
-.PHONY: all clean test lint format help venv install dev-install build publish check init ci ci-test docs examples
+DOCKER_IMAGE := herpai-ingestion
+DOCKER_TAG := latest
 
-# Default target
-all: help
+DB_NAME := herpai
+DB_USER := postgres
+DB_PASSWORD := postgres
+DB_PORT := 5432
 
-##@ General
-help: ## Display this help message
-	@awk 'BEGIN {FS = ":.*##"; printf "$(BLUE)Usage:$(NC)\n  make $(GREEN)<target>$(NC)\n\n$(BLUE)Targets:$(NC)\n"} \
-		/^[a-zA-Z0-9_-]+:.*?##/ { printf "  $(GREEN)%-15s$(NC) %s\n", $$1, $$2 } \
-		/^##@/ { printf "\n$(YELLOW)%s$(NC)\n", substr($$0, 5) }' $(MAKEFILE_LIST)
+.PHONY: help
+help:
+	@echo "HerpAI-Ingestion Makefile"
+	@echo "---------------------------"
+	@echo "Environment setup:"
+	@echo "  venv                 Create virtual environment"
+	@echo "  setup-dev            Set up complete development environment"
+	@echo ""
+	@echo "CoreLib management:"
+	@echo "  install-corelib      Install CoreLib from local path"
+	@echo "  update-corelib       Update CoreLib to specific version"
+	@echo "                       Usage: make update-corelib VERSION=3.1.0"
+	@echo "  check-corelib-version Check installed CoreLib version"
+	@echo "  verify-corelib-compatibility Verify CoreLib compatibility"
+	@echo ""
+	@echo "Testing:"
+	@echo "  test                 Run all tests"
+	@echo "  test-unit            Run unit tests"
+	@echo "  test-integration     Run integration tests"
+	@echo "  test-connectors      Run connector tests"
+	@echo "  coverage             Run tests with coverage report"
+	@echo ""
+	@echo "Code quality:"
+	@echo "  format               Format code with black and isort"
+	@echo "  check-format         Check code formatting"
+	@echo "  lint                 Run linters"
+	@echo "  quality-check        Run all code quality checks"
+	@echo ""
+	@echo "Run components:"
+	@echo "  run-scheduler        Run the scheduler"
+	@echo "  run-worker           Run a worker"
+	@echo "  list-connectors      List connectors"
+	@echo "  test-connector       Test a specific connector (CONNECTOR=pubmed)"
+	@echo ""
+	@echo "Docs:"
+	@echo "  docs                 Build documentation"
+	@echo "  docs-serve           Serve documentation locally"
+	@echo ""
+	@echo "Docker:"
+	@echo "  docker-build         Build Docker image"
+	@echo "  docker-run           Run Docker container"
+	@echo ""
+	@echo "Database:"
+	@echo "  db-start             Start local development database"
+	@echo "  db-stop              Stop local development database"
+	@echo ""
+	@echo "Build:"
+	@echo "  build                Build package"
+	@echo "  clean                Clean build artifacts"
 
-##@ Development Environment
-venv: ## Create virtual environment
-	@echo "$(BLUE)Creating virtual environment...$(NC)"
-	$(PYTHON) -m venv $(VENV_NAME)
-	@echo "$(GREEN)Virtual environment created at $(VENV_NAME)/$(NC)"
-	@echo "$(YELLOW)To activate, run: source $(VENV_ACTIVATE)$(NC)"
+venv:
+	python$(PYTHON_VERSION) -m venv $(VENV_DIR)
+	@echo "Virtual environment created at $(VENV_DIR)"
+	@echo "Activate with: source $(VENV_DIR)/bin/activate"
 
-install: check-venv ## Install package in development mode
-	@echo "$(BLUE)Installing package...$(NC)"
-	$(VENV_RUN) pip install -e .
-	@echo "$(GREEN)Installation complete.$(NC)"
+install-deps: venv
+	$(VENV_DIR)/bin/pip install -U pip setuptools wheel
+	$(VENV_DIR)/bin/pip install -e .
 
-dev-install: check-venv ## Install package with development dependencies
-	@echo "$(BLUE)Installing package with development dependencies...$(NC)"
-	$(VENV_RUN) pip install -e ".[dev]"
-	@echo "$(GREEN)Development installation complete.$(NC)"
+install-dev-deps: install-deps
+	$(VENV_DIR)/bin/pip install -e ".[dev]"
 
-init: dev-install ## Initialize development environment with pre-commit hooks
-	@echo "$(BLUE)Setting up pre-commit hooks...$(NC)"
-	$(VENV_RUN) pre-commit install
-	@echo "$(GREEN)Development environment initialized.$(NC)"
-
-##@ Testing
-test: check-venv ## Run all tests with coverage
-	@echo "$(BLUE)Running tests...$(NC)"
-	$(VENV_RUN) pytest $(TESTS_DIR) $(TEST_OPTIONS) $(COVERAGE_OPTIONS)
-
-test-unit: check-venv ## Run unit tests
-	@echo "$(BLUE)Running unit tests...$(NC)"
-	$(VENV_RUN) pytest tests/unit $(TEST_OPTIONS)
-
-test-integration: check-venv ## Run integration tests
-	@echo "$(BLUE)Running integration tests...$(NC)"
-	$(VENV_RUN) pytest tests/integration $(TEST_OPTIONS)
-
-test-e2e: check-venv ## Run end-to-end tests
-	@echo "$(BLUE)Running end-to-end tests...$(NC)"
-	$(VENV_RUN) pytest tests/e2e $(TEST_OPTIONS)
-
-test-connectors: check-venv ## Run connector tests
-	@echo "$(BLUE)Running connector tests...$(NC)"
-	$(VENV_RUN) pytest tests/connectors $(TEST_OPTIONS)
-
-##@ Code Quality
-lint: check-venv ## Run all linters
-	@echo "$(BLUE)Running linters...$(NC)"
-	$(VENV_RUN) flake8 $(FLAKE8_OPTIONS) .
-	$(VENV_RUN) mypy $(MYPY_OPTIONS) .
-	$(VENV_RUN) black --check $(BLACK_OPTIONS) .
-	$(VENV_RUN) isort --check-only $(ISORT_OPTIONS) .
-
-format: check-venv ## Format code with black and isort
-	@echo "$(BLUE)Formatting code...$(NC)"
-	$(VENV_RUN) black $(BLACK_OPTIONS) .
-	$(VENV_RUN) isort $(ISORT_OPTIONS) .
-
-check: lint test ## Run all quality checks (linting and tests)
-	@echo "$(GREEN)All checks passed!$(NC)"
-
-##@ Examples
-run-examples: check-venv ## Run all examples
-	@echo "$(BLUE)Running examples...$(NC)"
-	$(VENV_RUN) python examples/basic/01_basic_ingestion.py
-
-##@ Documentation
-docs: check-venv ## Generate documentation
-	@echo "$(BLUE)Generating documentation...$(NC)"
-	$(VENV_RUN) sphinx-build -b html docs/source docs/build/html
-	@echo "$(GREEN)Documentation built at docs/build/html/index.html$(NC)"
-
-##@ CI/CD
-ci: clean venv dev-install ci-test lint ## Run CI pipeline locally
-	@echo "$(GREEN)CI pipeline completed!$(NC)"
-
-ci-test: check-venv ## Run tests in CI mode
-	@echo "$(BLUE)Running tests in CI mode...$(NC)"
-	CI=true $(VENV_RUN) pytest $(TESTS_DIR) $(TEST_OPTIONS) $(COVERAGE_OPTIONS)
-
-##@ Building and Publishing
-build: check-venv ## Build package distributions
-	@echo "$(BLUE)Building package...$(NC)"
-	$(VENV_RUN) pip install --upgrade build
-	$(VENV_RUN) python -m build
-	@echo "$(GREEN)Package built successfully.$(NC)"
-
-publish-test: build ## Publish package to TestPyPI
-	@echo "$(BLUE)Publishing to TestPyPI...$(NC)"
-	$(VENV_RUN) pip install --upgrade twine
-	$(VENV_RUN) python -m twine upload --repository testpypi dist/*
-	@echo "$(GREEN)Package published to TestPyPI.$(NC)"
-
-publish: build ## Publish package to PyPI
-	@echo "$(BLUE)Publishing to PyPI...$(NC)"
-	$(VENV_RUN) pip install --upgrade twine
-	$(VENV_RUN) python -m twine upload dist/*
-	@echo "$(GREEN)Package published to PyPI.$(NC)"
-
-##@ Maintenance
-clean: ## Clean up build artifacts and virtual environment
-	@echo "$(BLUE)Cleaning up...$(NC)"
-	rm -rf build/
-	rm -rf dist/
-	rm -rf *.egg-info/
-	rm -rf $(VENV_NAME)/
-	rm -rf .pytest_cache/
-	rm -rf .coverage
-	rm -rf .mypy_cache/
-	rm -rf __pycache__/
-	find . -type d -name "__pycache__" -exec rm -rf {} +
-	find . -type d -name "*.egg-info" -exec rm -rf {} +
-	find . -type f -name "*.pyc" -delete
-	find . -type f -name ".coverage" -delete
-	find . -type d -name ".pytest_cache" -exec rm -rf {} +
-	@echo "$(GREEN)Cleanup complete.$(NC)"
-
-# Helper targets
-check-venv: ## Check if virtual environment exists, create if it doesn't
-	@if [ ! -d "$(VENV_NAME)" ]; then \
-		echo "$(RED)Virtual environment not found. Creating one...$(NC)"; \
-		$(MAKE) venv; \
+install-corelib:
+	@if [ ! -d "$(CORELIB_PATH)" ]; then \
+		echo "Error: CoreLib path $(CORELIB_PATH) does not exist"; \
+		echo "Specify the correct path with: make install-corelib CORELIB_PATH=/path/to/corelib"; \
+		exit 1; \
 	fi
+	$(VENV_DIR)/bin/pip install -e "$(CORELIB_PATH)"
+	@echo "Installed CoreLib from $(CORELIB_PATH)"
 
-##@ Dependencies
-update-corelib: check-venv ## Uninstall and reinstall openbiocure-corelib from local dist, pass VERSION=x.y.z
-	@echo "$(BLUE)Updating openbiocure-corelib to version $(VERSION)...$(NC)"
-	$(VENV_RUN) pip uninstall -y openbiocure-corelib
-	$(VENV_RUN) pip install /Users/mohammad_shehab/develop/HerpAI-Lib/dist/openbiocure_corelib-$(VERSION)-py3-none-any.whl
-	@echo "$(GREEN)openbiocure-corelib updated to version $(VERSION).$(NC)"
+update-corelib:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION parameter required"; \
+		echo "Usage: make update-corelib VERSION=3.1.0"; \
+		exit 1; \
+	fi
+	@if ! echo "$(VERSION)" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$$'; then \
+		echo "Error: Invalid version format. Expected format: X.Y.Z or X.Y.Z-suffix"; \
+		exit 1; \
+	fi
+	@echo "Backing up current CoreLib installation..."
+	@mkdir -p .backups
+	@$(VENV_DIR)/bin/pip freeze | grep "$(CORELIB_NAME)" > .backups/corelib-$(shell date +%Y%m%d%H%M%S).txt || true
+	@if [ ! -d "$(CORELIB_PATH)" ]; then \
+		echo "Error: CoreLib path $(CORELIB_PATH) does not exist"; \
+		echo "Specify the correct path with: make update-corelib VERSION=$(VERSION) CORELIB_PATH=/path/to/corelib"; \
+		exit 1; \
+	fi
+	@echo "Checking out version $(VERSION) in $(CORELIB_PATH)..."
+	@(cd "$(CORELIB_PATH)" && git fetch && git checkout v$(VERSION))
+	@echo "Updating CoreLib to version $(VERSION)..."
+	$(VENV_DIR)/bin/pip install -e "$(CORELIB_PATH)"
+	@echo "CoreLib updated to version $(VERSION)"
+
+check-corelib-version:
+	@echo "Installed CoreLib versions:"
+	@$(VENV_DIR)/bin/pip freeze | grep "$(CORELIB_NAME)"
+
+verify-corelib-compatibility: check-corelib-version
+	@echo "Verifying CoreLib compatibility..."
+	@$(VENV_DIR)/bin/python -c "from openbiocure_corelib import version; print(f'CoreLib version: {version.__version__}')"
+	@echo "Compatibility check completed"
+
+setup-dev: install-dev-deps install-corelib
+	@echo "Development environment setup complete"
+
+test: test-unit test-integration test-connectors
+
+test-unit:
+	$(PYTEST) $(PYTEST_ARGS) $(UNIT_TEST_DIR)
+
+test-integration:
+	$(PYTEST) $(PYTEST_ARGS) $(INTEGRATION_TEST_DIR)
+
+test-connectors:
+	$(PYTEST) $(PYTEST_ARGS) $(CONNECTOR_TEST_DIR)
+
+coverage:
+	$(PYTEST) $(PYTEST_ARGS) --cov=herpai_ingestion --cov-report=term --cov-report=html $(TEST_DIR)
+	@echo "Coverage report available at htmlcov/index.html"
+
+format:
+	$(BLACK) $(SRC_DIRS)
+	$(ISORT) $(SRC_DIRS)
+
+check-format:
+	$(BLACK) --check $(SRC_DIRS)
+	$(ISORT) --check-only $(SRC_DIRS)
+
+lint:
+	$(FLAKE8) $(SRC_DIRS)
+	$(MYPY) $(SRC_DIRS)
+
+quality-check: check-format lint
+
+run-scheduler:
+	$(VENV_DIR)/bin/herpai-ingestion scheduler run
+
+run-worker:
+	$(VENV_DIR)/bin/herpai-ingestion worker start
+
+list-connectors:
+	$(VENV_DIR)/bin/herpai-ingestion ingest list-connectors
+
+test-connector:
+	@if [ -z "$(CONNECTOR)" ]; then \
+		echo "Error: CONNECTOR parameter required"; \
+		echo "Usage: make test-connector CONNECTOR=pubmed"; \
+		exit 1; \
+	fi
+	$(VENV_DIR)/bin/herpai-ingestion connector test $(CONNECTOR)
+
+docs:
+	$(VENV_DIR)/bin/sphinx-build -b html $(DOCS_DIR) $(DOCS_BUILD_DIR)
+	@echo "Documentation built at $(DOCS_BUILD_DIR)/index.html"
+
+docs-serve: docs
+	$(VENV_DIR)/bin/python -m http.server --directory $(DOCS_BUILD_DIR)
+
+build:
+	$(VENV_DIR)/bin/python -m build
+
+clean:
+	rm -rf dist/
+	rm -rf build/
+	rm -rf *.egg-info/
+	rm -rf $(DOCS_BUILD_DIR)
+	find . -type d -name __pycache__ -exec rm -rf {} +
+	find . -type f -name "*.pyc" -delete
+
+docker-build:
+	docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
+
+docker-run:
+	docker run -it --rm $(DOCKER_IMAGE):$(DOCKER_TAG)
+
+db-start:
+	docker run -d --name herpai-db \
+		-e POSTGRES_USER=$(DB_USER) \
+		-e POSTGRES_PASSWORD=$(DB_PASSWORD) \
+		-e POSTGRES_DB=$(DB_NAME) \
+		-p $(DB_PORT):5432 \
+		postgres:14
+	@echo "Database running on port $(DB_PORT)"
+
+db-stop:
+	docker stop herpai-db
+	docker rm herpai-db

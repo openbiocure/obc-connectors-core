@@ -1,0 +1,149 @@
+name: pubmed
+display_name: PubMed/NCBI E-utilities
+description: Connects to the PubMed/NCBI E-utilities API for biomedical literature
+version: 1.0.0
+
+capabilities:
+  SUPPORTS_FULLTEXT: false
+  SUPPORTS_ADVANCED_SEARCH: true
+  SUPPORTS_DATE_FILTERING: true
+  REQUIRES_AUTHENTICATION: false
+  SUPPORTS_NATIVE_PAGINATION: true
+  SUPPORTS_DOCUMENT_CONTENT: true
+  SUPPORTS_JSON_CONTENT: true
+
+api:
+  base_url: ${HERPAI_PUBMED_API_URL|https://eutils.ncbi.nlm.nih.gov/entrez/eutils/}
+
+  rate_limit:
+    requests_per_second: ${HERPAI_PUBMED_RATE_LIMIT|3}
+    with_api_key: ${HERPAI_PUBMED_API_RATE_LIMIT|10}
+
+  default_params:
+    db: pubmed
+    api_key: "{api_key}"
+
+  endpoints:
+    search:
+      path: esearch.fcgi
+      method: GET
+      params:
+        db: pubmed
+        term: "{query}"
+        retmode: json
+        retmax: "{limit|100}"
+        api_key: "{api_key}"
+      response:
+        format: json
+        success_code: 200
+        error_path: error
+        data_path: esearchresult
+        mapping:
+          total_results:
+            path: count
+            transform: integer
+          document_ids: idlist
+          query: "{query}"
+          metadata:
+            db: pubmed
+
+    get_document:
+      path: efetch.fcgi
+      method: GET
+      params:
+        db: pubmed
+        id: "{id}"
+        retmode: xml
+        api_key: "{api_key}"
+      response:
+        format: xml
+        success_code: 200
+        error_path: error
+        data_path: PubmedArticle
+        mapping:
+          id: "{id}"
+          source: pubmed
+          title:
+            path: .//ArticleTitle
+            default: Untitled
+          abstract:
+            path: .//AbstractText
+          publication_date:
+            path: .//PubDate
+            transform: pubmed_date_parser
+          doi:
+            path: .//ArticleIdList/ArticleId[@IdType='doi']
+          url:
+            template: "https://pubmed.ncbi.nlm.nih.gov/{id}/"
+          authors:
+            path: .//Author
+            list: true
+            transform: pubmed_author_name
+          keywords:
+            path: .//Keyword
+            list: true
+            transform: pubmed_keywords
+          document_type: article
+
+    get_updates:
+      extends: search
+      path: esearch.fcgi
+      method: GET
+      params:
+        term:
+          template: '("0001"[EDAT] : "{since_date}"[EDAT])'
+        retmax: "{batch_size|100}"
+      response:
+        format: json
+        success_code: 200
+        error_path: error
+        data_path: esearchresult
+        mapping:
+          total_results:
+            path: count
+            transform: integer
+          document_ids: idlist
+      transform:
+        date:
+          since_date:
+            format: "%Y/%m/%d"
+      pagination:
+        type: batch
+        size: "{batch_size|100}"
+        iterator:
+          method: get_document
+          for_each: document_ids
+          params:
+            id: "{item}"
+
+error_handling:
+  retry:
+    max_attempts: ${HERPAI_PUBMED_MAX_RETRIES|3}
+    delay_seconds: 1
+    multiplier: 2
+    errors:
+      - ConnectionError
+      - TimeoutError
+      - RateLimitExceeded
+
+  error_mappings:
+    429: RateLimitExceeded
+    401: AuthenticationError
+    404: FetchError
+    default: ConnectorError
+
+validation:
+  required_fields:
+    search:
+      - query
+    get_document:
+      - id
+    get_updates:
+      - since_date
+
+  field_types:
+    query: string
+    id: string
+    since_date: datetime
+    limit: integer
+    batch_size: integer
