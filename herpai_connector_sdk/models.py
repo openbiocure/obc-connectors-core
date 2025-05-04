@@ -1,7 +1,7 @@
 """Data models for the HerpAI Connector SDK."""
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 from datetime import datetime
 
 @dataclass

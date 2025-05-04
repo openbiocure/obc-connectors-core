@@ -28,16 +28,21 @@ api:
       path: esearch.fcgi
       method: GET
       params:
+        db: pubmed
         term: "{query}"
         retmode: json
         retmax: "{limit|100}"
+        api_key: "{api_key}"
       response:
+        format: json
+        success_code: 200
+        error_path: error
+        data_path: esearchresult
         mapping:
           total_results:
-            path: esearchresult.count
-            transform:
-              type: integer
-          document_ids: esearchresult.idlist
+            path: count
+            transform: integer
+          document_ids: idlist
           query: "{query}"
           metadata:
             db: pubmed
@@ -46,9 +51,15 @@ api:
       path: efetch.fcgi
       method: GET
       params:
+        db: pubmed
         id: "{id}"
         retmode: xml
+        api_key: "{api_key}"
       response:
+        format: xml
+        success_code: 200
+        error_path: error
+        data_path: PubmedArticle
         mapping:
           id: "{id}"
           source: pubmed
@@ -59,24 +70,7 @@ api:
             path: .//AbstractText
           publication_date:
             path: .//PubDate
-            transform:
-              type: date
-              year: .//Year
-              month: .//Month|1
-              day: .//Day|1
-              month_names:
-                Jan: 1
-                Feb: 2
-                Mar: 3
-                Apr: 4
-                May: 5
-                Jun: 6
-                Jul: 7
-                Aug: 8
-                Sep: 9
-                Oct: 10
-                Nov: 11
-                Dec: 12
+            transform: pubmed_date_parser
           doi:
             path: .//ArticleIdList/ArticleId[@IdType='doi']
           url:
@@ -84,29 +78,31 @@ api:
           authors:
             path: .//Author
             list: true
-            mapping:
-              name:
-                transform:
-                  type: concat
-                  fields:
-                    - path: LastName
-                    - path: ForeName
-                  separator: ", "
-              affiliation:
-                path: .//Affiliation
+            transform: pubmed_author_name
           keywords:
             path: .//Keyword
             list: true
-            transform:
-              type: text
+            transform: pubmed_keywords
           document_type: article
 
     get_updates:
       extends: search
+      path: esearch.fcgi
+      method: GET
       params:
         term:
           template: '("0001"[EDAT] : "{since_date}"[EDAT])'
         retmax: "{batch_size|100}"
+      response:
+        format: json
+        success_code: 200
+        error_path: error
+        data_path: esearchresult
+        mapping:
+          total_results:
+            path: count
+            transform: integer
+          document_ids: idlist
       transform:
         date:
           since_date:

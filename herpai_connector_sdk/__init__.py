@@ -3,8 +3,11 @@
 A flexible SDK for building data source connectors for the HerpAI-Ingestion system.
 """
 
-from .interfaces import IConnector, ConnectorCapability
-from .base import BaseConnector
+__version__ = "0.1.0"
+
+# Core interfaces and base classes
+from .i_connector import IConnector, ConnectorCapability
+from .base_connector import BaseConnector
 from .models import Document, Author, ContentType
 from .exceptions import (
     ConnectorError,
@@ -14,7 +17,6 @@ from .exceptions import (
     ParseError
 )
 
-__version__ = "1.0.0"
 __all__ = [
     'IConnector',
     'ConnectorCapability',
