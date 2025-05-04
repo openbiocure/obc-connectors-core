@@ -10,7 +10,7 @@
                 "debug",
                 "test",
                 "pubmed",
-                "--query", "python",
+                "--query", "HSV2",
                 "--limit", "5"
             ],
             "env": {
@@ -54,6 +54,41 @@
             },
             "justMyCode": false,
             "console": "integratedTerminal"
+        },
+        {
+            "name": "Europe PMC: Search",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "herpai_ingestion.cli.__main__",
+            "args": [
+                "debug",
+                "test",
+                "europe_pmc",
+                "--query", "HSV2",
+                "--limit", "5"
+            ],
+            "env": {
+                "HERPAI_API_KEY": "${env:HERPAI_EUROPEPMC_API_KEY}"
+            },
+            "justMyCode": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Europe PMC: Get Document",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "herpai_ingestion.cli.__main__",
+            "args": [
+                "debug",
+                "test",
+                "europe_pmc",
+                "--id", "PMC7245159"
+            ],
+            "env": {
+                "HERPAI_API_KEY": "${env:HERPAI_EUROPEPMC_API_KEY}"
+            },
+            "justMyCode": false,
+            "console": "integratedTerminal"
         }
     ],
     "inputs": [
@@ -67,7 +102,7 @@
             "id": "searchQuery",
             "type": "promptString",
             "description": "Enter search query",
-            "default": "python"
+            "default": "HSV2"
         },
         {
             "id": "resultLimit",
@@ -80,6 +115,12 @@
             "type": "promptString",
             "description": "Enter connector version (leave empty for latest)",
             "default": "1.0.0"
+        },
+        {
+            "id": "europePmcId",
+            "type": "promptString",
+            "description": "Enter Europe PMC document ID",
+            "default": "PMC7245159"
         }
     ]
 }

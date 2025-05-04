@@ -1,0 +1,143 @@
+name: europe_pmc
+display_name: Europe PMC
+description: Retrieves biomedical literature from the Europe PMC API
+version: 1.0.0
+
+capabilities:
+  SUPPORTS_FULLTEXT: false
+  SUPPORTS_ADVANCED_SEARCH: true
+  SUPPORTS_DATE_FILTERING: true
+  REQUIRES_AUTHENTICATION: false
+  SUPPORTS_NATIVE_PAGINATION: true
+  SUPPORTS_DOCUMENT_CONTENT: true
+  SUPPORTS_JSON_CONTENT: true
+
+api:
+  base_url: ${HERPAI_EUROPEPMC_API_URL|https://www.ebi.ac.uk/europepmc/webservices/rest/}
+
+  rate_limit:
+    requests_per_second: ${HERPAI_EUROPEPMC_RATE_LIMIT|5}
+    with_api_key: ${HERPAI_EUROPEPMC_API_RATE_LIMIT|10}
+
+  default_params:
+    format: json
+    resultType: core
+
+  endpoints:
+    search:
+      path: search
+      method: GET
+      params:
+        query: "{query}"
+        pageSize: "{limit|25}"
+        cursorMark: "{cursor|*}"
+        format: json
+        resultType: core
+      response:
+        format: json
+        success_code: 200
+        error_path: error
+        data_path: resultList
+        mapping:
+          total_results:
+            path: result
+            transform: count_list
+          document_ids:
+            path: result
+            transform: extract_ids
+          metadata:
+            source: europe_pmc
+            next_cursor:
+              path: nextCursorMark
+
+    get_document:
+      path: search
+      method: GET
+      params:
+        query: "ext_id:{id}"
+        pageSize: 1
+        format: json
+        resultType: core
+      response:
+        format: json
+        success_code: 200
+        error_path: error
+        data_path: resultList.result[0]
+        mapping:
+          id: id
+          title: title
+          abstract: abstractText
+          authors:
+            path: authorList.author[*].fullName
+            list: true
+          publication_date: firstPublicationDate
+          journal: journalInfo.journal.title
+          doi: doi
+          url:
+            template: "https://europepmc.org/article/{source}/{id}"
+          metadata:
+            pmid: pmid
+            pmcid: pmcid
+            source: source
+            publication_type:
+              path: pubTypeList.pubType
+              list: true
+            keywords:
+              path: keywordList.keyword
+              list: true
+            mesh_terms:
+              path: meshHeadingList.meshHeading[*].descriptorName
+              list: true
+
+    get_updates:
+      extends: search
+      params:
+        query:
+          template: "FIRST_PDATE:[{since_date} TO NOW]"
+        pageSize: "{batch_size|100}"
+        format: json
+        resultType: core
+      response:
+        format: json
+        success_code: 200
+        error_path: error
+        data_path: resultList
+        mapping:
+          total_results:
+            path: hitCount
+            transform: integer
+          document_ids:
+            path: result[*].id
+            list: true
+
+error_handling:
+  retry:
+    max_attempts: ${HERPAI_EUROPEPMC_MAX_RETRIES|3}
+    delay_seconds: 1
+    multiplier: 2
+    errors:
+      - ConnectionError
+      - TimeoutError
+      - RateLimitExceeded
+
+  error_mappings:
+    429: RateLimitExceeded
+    401: AuthenticationError
+    404: FetchError
+    default: ConnectorError
+
+validation:
+  required_fields:
+    search:
+      - query
+    get_document:
+      - id
+    get_updates:
+      - since_date
+
+  field_types:
+    query: string
+    id: string
+    since_date: datetime
+    limit: integer
+    batch_size: integer

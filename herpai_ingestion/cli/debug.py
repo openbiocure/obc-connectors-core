@@ -31,7 +31,7 @@ def test_connector(connector_name: str, query: Optional[str], id: Optional[str],
          api_key: Optional[str], limit: int, version: Optional[str]):
     """Test a connector's functionality.
     
-    CONNECTOR_NAME: Name of the connector to test (e.g., 'pubmed')
+    CONNECTOR_NAME: Name of the connector to test (e.g., 'pubmed, 'europe_pmc')
     """
     async def run():
         try:
@@ -44,8 +44,13 @@ def test_connector(connector_name: str, query: Optional[str], id: Optional[str],
                     # Test search
                     click.echo(f"Searching {connector_name} v{version if version else 'latest'}...")
                     results = await connector.search(query, limit=limit)
-                    if results and 'total_results' in results:
-                        click.echo(f"Found {results['total_results']} results")
+                    if results:
+                        total_results = results.get('total_results')
+                        if total_results is not None:
+                            click.echo(f"Found {total_results} results")
+                        else:
+                            click.echo("Total results count not available")
+                        
                         if 'document_ids' in results:
                             for doc_id in results['document_ids'][:limit]:
                                 click.echo(f"- {doc_id}")
