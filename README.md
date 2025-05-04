@@ -7,16 +7,17 @@ A flexible and scalable library for ingesting, processing, and storing biomedica
   - [Table of Contents](#table-of-contents)
   - [System Overview](#system-overview)
   - [Architecture](#architecture)
-    - [Connector SDK Components](#connector-sdk-components)
-    - [Interfaces and Base Classes](#interfaces-and-base-classes)
-    - [Connector Data Models](#connector-data-models)
-    - [Connector Utilities](#connector-utilities)
-    - [Connector Exceptions](#connector-exceptions)
-    - [Data Flow](#data-flow)
-    - [Component Interactions](#component-interactions)
+  - [Connector Framework](#connector-framework)
+    - [Key Components](#key-components)
+    - [Implemented Connectors](#implemented-connectors)
+  - [Development](#development)
+    - [Creating New Connectors](#creating-new-connectors)
+    - [Testing](#testing)
+  - [Configuration](#configuration)
+  - [Error Handling](#error-handling)
+  - [Contributing](#contributing)
+  - [License](#license)
   - [Sample Connector Implementation](#sample-connector-implementation)
-    - [Connector Registry](#connector-registry)
-    - [Connector Specifications](#connector-specifications)
   - [Data Processing Pipeline](#data-processing-pipeline)
     - [Extraction Phase](#extraction-phase)
     - [Transformation Phase](#transformation-phase)
@@ -32,13 +33,11 @@ A flexible and scalable library for ingesting, processing, and storing biomedica
   - [Scheduler CLI Commands](#scheduler-cli-commands)
     - [CLI Main Integration](#cli-main-integration)
     - [CLI Usage Examples](#cli-usage-examples)
-- [List all scheduled jobs](#list-all-scheduled-jobs)
-- [Add a new scheduled job (daily at 2 AM)](#add-a-new-scheduled-job-daily-at-2-am)
-- [Update a job's schedule (change to weekly on Sunday at 3 AM)](#update-a-jobs-schedule-change-to-weekly-on-sunday-at-3-am)
-- [Disable a job temporarily](#disable-a-job-temporarily)
-- [Enable a job](#enable-a-job)
-- [Run a job immediately](#run-a-job-immediately)
-- [Delete a job](#delete-a-job)
+  - [Connector System](#connector-system)
+    - [Dynamic Connector Registration](#dynamic-connector-registration)
+      - [Registering a Connector](#registering-a-connector)
+      - [Working with Connector Types](#working-with-connector-types)
+      - [Built-in Connectors](#built-in-connectors)
 ## System Overview
 
 HerpAI-Ingestion is a critical component of the HerpAI ecosystem, designed to gather and process biomedical data with a focus on herpes viruses and related treatments. It serves as the knowledge acquisition layer, feeding domain-specific information into the AI systems that power HerpAI's capabilities.
@@ -58,326 +57,161 @@ HerpAI-Ingestion is a critical component of the HerpAI ecosystem, designed to ga
 
 ## Architecture
 
-### Connector SDK Components
-
-The `herpai_connector_sdk` package provides the foundation for all connectors:
-
-### Interfaces and Base Classes
-
-```python
-# herpai_connector_sdk/interfaces.py
-from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any
-
-class IConnector(ABC):
-    """Interface for all connectors in the HerpAI-Ingestion system."""
+```mermaid
+graph TD
+    A[Data Sources] --> B[Connectors Layer]
+    B --> C[Processing Layer]
+    C --> D[Storage Layer]
     
-    @abstractmethod
-    async def install(self) -> None:
-        """Install connector dependencies or set up resources."""
-        pass
+    subgraph "Data Sources"
+        A1[PubMed] 
+        A2[Europe PMC]
+        A3[Future Sources...]
+    end
     
-    @abstractmethod
-    async def uninstall(self) -> None:
-        """Clean up connector resources."""
-        pass
+    subgraph "Connectors Layer"
+        B1[Base Connector]
+        B2[YAML Configuration]
+        B3[Transform Registry]
+        B4[Response Mapping]
+    end
     
-    @abstractmethod
-    async def authenticate(self, config: Dict[str, Any]) -> None:
-        """Authenticate with the data source."""
-        pass
+    subgraph "Processing Layer"
+        C1[Document Processing]
+        C2[Metadata Extraction]
+        C3[Error Handling]
+    end
     
-    @abstractmethod
-    async def search(self, query: str, limit: Optional[int] = None) -> Dict[str, Any]:
-        """Search the data source with the given query."""
-        pass
-    
-    @abstractmethod
-    async def get_by_id(self, id: str) -> Dict[str, Any]:
-        """Retrieve a specific document by ID."""
-        pass
-    
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Get the connector name."""
-        pass
-    
-    @property
-    @abstractmethod
-    def capabilities(self) -> Dict[str, bool]:
-        """Get the connector capabilities."""
-        pass
-
-# herpai_connector_sdk/base.py
-from .interfaces import IConnector
-from .models import Document
-from typing import Dict, List, Optional, Any
-import yaml
-import os
-import logging
-
-logger = logging.getLogger(__name__)
-
-class BaseConnector(IConnector):
-    """Base implementation for connectors with common functionality."""
-    
-    def __init__(self):
-        self._config = {}
-        self._capabilities = {
-            "supports_fulltext": False,
-            "supports_advanced_search": False,
-            "supports_date_filtering": False,
-            "requires_authentication": False
-        }
-    
-    async def install(self) -> None:
-        """Default implementation of install that logs the action."""
-        logger.info(f"Installing connector: {self.name}")
-    
-    async def uninstall(self) -> None:
-        """Default implementation of uninstall that logs the action."""
-        logger.info(f"Uninstalling connector: {self.name}")
-    
-    def configure(self, config: Dict[str, Any]) -> None:
-        """Configure the connector with the provided settings."""
-        self._config = config
-    
-    def load_specification(self, path: Optional[str] = None) -> Dict[str, Any]:
-        """Load the connector specification from a YAML file."""
-        if not path:
-            # Try to find specification in the connector's directory
-            module_dir = os.path.dirname(os.path.abspath(__file__))
-            path = os.path.join(module_dir, "connector.yaml")
-        
-        if not os.path.exists(path):
-            logger.warning(f"Specification file not found: {path}")
-            return {}
-        
-        try:
-            with open(path, "r") as f:
-                spec = yaml.safe_load(f)
-                
-                # Update capabilities from spec
-                if "capabilities" in spec:
-                    self._capabilities.update(spec["capabilities"])
-                
-                return spec
-        except Exception as e:
-            logger.error(f"Error loading specification: {str(e)}")
-            return {}
-    
-    @property
-    def capabilities(self) -> Dict[str, bool]:
-        """Get the connector capabilities."""
-        return self._capabilities.copy()
+    subgraph "Storage Layer"
+        D1[Raw Documents]
+        D2[Processed Data]
+        D3[Metadata Index]
+    end
 ```
 
-### Connector Data Models
+## Connector Framework
 
-```python
-# herpai_connector_sdk/models.py
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
-from datetime import datetime
+The system uses a YAML-driven connector framework for integrating with different data sources:
 
-@dataclass
-class Author:
-    """Author data model."""
-    name: str
-    orcid: Optional[str] = None
-    email: Optional[str] = None
-    affiliation: Optional[str] = None
+### Key Components
 
-@dataclass
-class Document:
-    """Document data model for connector responses."""
-    id: str
-    source: str
-    title: str
-    abstract: Optional[str] = None
-    publication_date: Optional[datetime] = None
-    doi: Optional[str] = None
-    url: Optional[str] = None
-    authors: List[Author] = field(default_factory=list)
-    keywords: List[str] = field(default_factory=list)
-    document_type: str = "article"
-    full_text: Optional[str] = None
-    metadata: Dict[str, any] = field(default_factory=dict)
+1. **Base Connector**
+   - Abstract base class for all connectors
+   - Handles YAML configuration loading
+   - Provides common utilities and transforms
+   - Implements response mapping logic
 
-@dataclass
-class SearchResult:
-    """Search result data model."""
-    query: str
-    total_results: int
-    document_ids: List[str]
-    metadata: Dict[str, any] = field(default_factory=dict)
+2. **YAML Configuration**
+   - Defines API endpoints and parameters
+   - Specifies response mapping rules
+   - Configures error handling and validation
+   - Declares required transforms
+
+3. **Transform Registry**
+   - Manages reusable data transformations
+   - Supports custom transform registration
+   - Handles type conversion and validation
+   - Provides error handling for transforms
+
+4. **Response Mapping**
+   - Maps API responses to standard format
+   - Handles null/missing values gracefully
+   - Supports complex data extraction
+   - Uses custom transforms for special cases
+
+### Implemented Connectors
+
+1. **PubMed Connector**
+   - Connects to NCBI E-utilities API
+   - Supports advanced search
+   - Handles XML response parsing
+   - Includes citation metadata
+
+2. **Europe PMC Connector**
+   - Connects to Europe PMC REST API
+   - Supports cursor-based pagination
+   - Handles JSON response parsing
+   - Extracts comprehensive metadata
+
+## Development
+
+### Creating New Connectors
+
+1. **Pre-Implementation**
+   - Validate API response structure
+   - Test endpoints with curl/Postman
+   - Document field mappings
+   - Identify required transforms
+
+2. **Implementation**
+   - Create connector.yaml configuration
+   - Implement custom transforms
+   - Add error handling
+   - Write unit tests
+
+3. **Best Practices**
+   - Handle null/missing values
+   - Use proper type hints
+   - Include detailed logging
+   - Document edge cases
+
+### Testing
+
+```bash
+# Test a specific connector
+python -m herpai_ingestion debug test <connector_name> --query "search term" --limit 5
+
+# Run all tests
+make test
+
+# Run specific test suite
+pytest tests/connectors/test_europe_pmc.py
 ```
 
-### Connector Utilities
+## Configuration
 
-```python
-# herpai_connector_sdk/utils/rate_limiter.py
-import asyncio
-import time
-from typing import Optional
+Each connector requires a YAML configuration file defining:
+- API endpoints and parameters
+- Response mapping rules
+- Error handling
+- Required transforms
 
-class RateLimiter:
-    """Utility for managing API rate limits."""
-    
-    def __init__(self, requests_per_second: float):
-        self.requests_per_second = requests_per_second
-        self._last_request_time = 0.0
-        self._lock = asyncio.Lock()
-    
-    async def acquire(self):
-        """Acquire permission to make a request."""
-        async with self._lock:
-            current_time = time.time()
-            time_since_last_request = current_time - self._last_request_time
-            min_interval = 1.0 / self.requests_per_second
-            
-            if time_since_last_request < min_interval:
-                # Need to wait
-                wait_time = min_interval - time_since_last_request
-                await asyncio.sleep(wait_time)
-            
-            self._last_request_time = time.time()
+Example:
+```yaml
+name: europe_pmc
+display_name: Europe PMC
+description: Retrieves biomedical literature from Europe PMC
+version: 1.0.0
 
-# herpai_connector_sdk/utils/http.py
-import aiohttp
-from typing import Dict, Any, Optional
-import logging
+capabilities:
+  SUPPORTS_JSON_CONTENT: true
+  SUPPORTS_ADVANCED_SEARCH: true
+  # ... other capabilities
 
-logger = logging.getLogger(__name__)
-
-class HTTPClient:
-    """HTTP client utility for connectors."""
-    
-    def __init__(self, base_url: str, headers: Optional[Dict[str, str]] = None):
-        self.base_url = base_url.rstrip('/')
-        self.headers = headers or {}
-        self.session = None
-    
-    async def ensure_session(self):
-        """Ensure an aiohttp session exists."""
-        if self.session is None or self.session.closed:
-            self.session = aiohttp.ClientSession(headers=self.headers)
-    
-    async def close(self):
-        """Close the HTTP session."""
-        if self.session and not self.session.closed:
-            await self.session.close()
-    
-    async def get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Make a GET request."""
-        await self.ensure_session()
-        url = f"{self.base_url}/{path.lstrip('/')}"
-        
-        try:
-            async with self.session.get(url, params=params) as response:
-                response.raise_for_status()
-                return await response.json()
-        except aiohttp.ClientResponseError as e:
-            logger.error(f"HTTP error: {e.status} - {e.message}")
-            raise
-        except Exception as e:
-            logger.error(f"Request error: {str(e)}")
-            raise
+api:
+  base_url: ${HERPAI_EUROPEPMC_API_URL|https://www.ebi.ac.uk/europepmc/webservices/rest/}
+  # ... other API configuration
 ```
 
-### Connector Exceptions
+## Error Handling
 
-```python
-# herpai_connector_sdk/exceptions.py
-class ConnectorError(Exception):
-    """Base exception for connector-related errors."""
-    pass
+The system implements robust error handling:
+- Retries for transient failures
+- Detailed error logging
+- Graceful degradation
+- Type safety checks
 
-class AuthenticationError(ConnectorError):
-    """Exception raised for authentication failures."""
-    def __init__(self, message="Authentication failed", *args, **kwargs):
-        super().__init__(message, *args, **kwargs)
+## Contributing
 
-class RateLimitExceeded(ConnectorError):
-    """Exception raised when rate limits are exceeded."""
-    def __init__(self, message="Rate limit exceeded", retry_after=None, *args, **kwargs):
-        self.retry_after = retry_after
-        super().__init__(message, *args, **kwargs)
+1. Fork the repository
+2. Create a feature branch
+3. Follow coding standards
+4. Add tests for new features
+5. Submit a pull request
 
-class FetchError(ConnectorError):
-    """Exception raised when document fetching fails."""
-    def __init__(self, document_id, message="Failed to fetch document", *args, **kwargs):
-        self.document_id = document_id
-        super().__init__(f"{message}: {document_id}", *args, **kwargs)
+## License
 
-class ParseError(ConnectorError):
-    """Exception raised when document parsing fails."""
-    def __init__(self, document_id, message="Failed to parse document", *args, **kwargs):
-        self.document_id = document_id
-        super().__init__(f"{message}: {document_id}", *args, **kwargs)
-```
-
-### Data Flow
-
-The system follows a clear data flow pattern:
-
-1. **Ingestion Request Initiation**
-   - Via CLI, API, or scheduled job
-   - Query parameters specified (search terms, date ranges, etc.)
-   - Resources allocated based on request size
-
-2. **Connector Execution**
-   - Appropriate connector selected
-   - Authentication performed if required
-   - Query translated to source-specific format
-   - Results retrieved with pagination if needed
-
-3. **Document Acquisition**
-   - Raw documents downloaded
-   - Initial format detection
-   - Checksums calculated for deduplication
-
-4. **Document Processing**
-   - Text extraction from various formats
-   - Structure identification (sections, references)
-   - Entity extraction (diseases, treatments, genes)
-   - Relationship mapping
-
-5. **Metadata Extraction**
-   - Bibliographic information captured
-   - Author information normalized
-   - Citation network built
-   - Keywords and classifications extracted
-
-6. **Storage**
-   - Raw documents stored in data lake
-   - Processed documents stored in structured format
-   - Metadata stored in database
-   - Vector embeddings generated for RAG
-
-7. **Indexing and Optimization**
-   - Search indices created/updated
-   - Access patterns optimized
-   - Cache warming for frequent queries
-
-### Component Interactions
-
-The system uses a combination of interfaces and events to coordinate component interactions:
-
-**Key Interface Points:**
-1. **IConnector** - Standardized interface for all data source connectors
-2. **IDocumentProcessor** - Interface for document processing components
-3. **IStorageProvider** - Abstraction for different storage backends
-4. **IMetadataRepository** - Interface for metadata catalog interactions
-
-**Event Flow:**
-1. **IngestionRequested** - Triggered when a new ingestion job is created
-2. **DocumentAcquired** - Fired when a document is successfully downloaded
-3. **DocumentProcessed** - Signaled after document processing completes
-4. **MetadataExtracted** - Indicates metadata extraction completion
-5. **DocumentStored** - Confirms successful storage of a document
-6. **IngestionCompleted** - Marks the completion of an ingestion job
+[Your License]
 
 ## Sample Connector Implementation
 
@@ -1764,8 +1598,6 @@ The HerpAI Connector SDK uses a dynamic registration system for connectors. Inst
 #### Registering a Connector
 
 To create a new connector:
-
-1. Register your connector type:
 ```python
 from herpai_connector_sdk.interfaces.connector_type import ConnectorTypeRegistry
 
