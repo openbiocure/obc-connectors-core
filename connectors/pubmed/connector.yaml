@@ -4,37 +4,150 @@ description: Connects to the PubMed/NCBI E-utilities API for biomedical literatu
 version: 1.0.0
 
 capabilities:
-  supports_fulltext: false
-  supports_advanced_search: true
-  supports_date_filtering: true
-  requires_authentication: false
-  supports_native_pagination: true
-  content_types:
-    - SUPPORTS_DOCUMENT_CONTENT
-    - SUPPORTS_JSON_CONTENT
+  SUPPORTS_FULLTEXT: false
+  SUPPORTS_ADVANCED_SEARCH: true
+  SUPPORTS_DATE_FILTERING: true
+  REQUIRES_AUTHENTICATION: false
+  SUPPORTS_NATIVE_PAGINATION: true
+  SUPPORTS_DOCUMENT_CONTENT: true
+  SUPPORTS_JSON_CONTENT: true
 
 api:
-  base_url: https://eutils.ncbi.nlm.nih.gov/entrez/eutils/
+  base_url: ${HERPAI_PUBMED_API_URL|https://eutils.ncbi.nlm.nih.gov/entrez/eutils/}
+
   rate_limit:
-    requests_per_second: 3
-    with_api_key: 10
+    requests_per_second: ${HERPAI_PUBMED_RATE_LIMIT|3}
+    with_api_key: ${HERPAI_PUBMED_API_RATE_LIMIT|10}
 
-configuration:
-  properties:
-    - name: api_key
-      type: string
-      required: false
-      description: NCBI API key for higher rate limits
-      sensitive: true
+  default_params:
+    db: pubmed
+    api_key: "{api_key}"
 
-    - name: batch_size
-      type: integer
-      required: false
-      default: 100
-      description: Number of items to retrieve in each batch
+  endpoints:
+    search:
+      path: esearch.fcgi
+      method: GET
+      params:
+        term: "{query}"
+        retmode: json
+        retmax: "{limit|100}"
+      response:
+        mapping:
+          total_results:
+            path: esearchresult.count
+            transform:
+              type: integer
+          document_ids: esearchresult.idlist
+          query: "{query}"
+          metadata:
+            db: pubmed
 
-    - name: max_retries
-      type: integer
-      required: false
-      default: 3
-      description: Maximum number of retry attempts for failed requests
+    get_document:
+      path: efetch.fcgi
+      method: GET
+      params:
+        id: "{id}"
+        retmode: xml
+      response:
+        mapping:
+          id: "{id}"
+          source: pubmed
+          title:
+            path: .//ArticleTitle
+            default: Untitled
+          abstract:
+            path: .//AbstractText
+          publication_date:
+            path: .//PubDate
+            transform:
+              type: date
+              year: .//Year
+              month: .//Month|1
+              day: .//Day|1
+              month_names:
+                Jan: 1
+                Feb: 2
+                Mar: 3
+                Apr: 4
+                May: 5
+                Jun: 6
+                Jul: 7
+                Aug: 8
+                Sep: 9
+                Oct: 10
+                Nov: 11
+                Dec: 12
+          doi:
+            path: .//ArticleIdList/ArticleId[@IdType='doi']
+          url:
+            template: "https://pubmed.ncbi.nlm.nih.gov/{id}/"
+          authors:
+            path: .//Author
+            list: true
+            mapping:
+              name:
+                transform:
+                  type: concat
+                  fields:
+                    - path: LastName
+                    - path: ForeName
+                  separator: ", "
+              affiliation:
+                path: .//Affiliation
+          keywords:
+            path: .//Keyword
+            list: true
+            transform:
+              type: text
+          document_type: article
+
+    get_updates:
+      extends: search
+      params:
+        term:
+          template: '("0001"[EDAT] : "{since_date}"[EDAT])'
+        retmax: "{batch_size|100}"
+      transform:
+        date:
+          since_date:
+            format: "%Y/%m/%d"
+      pagination:
+        type: batch
+        size: "{batch_size|100}"
+        iterator:
+          method: get_document
+          for_each: document_ids
+          params:
+            id: "{item}"
+
+error_handling:
+  retry:
+    max_attempts: ${HERPAI_PUBMED_MAX_RETRIES|3}
+    delay_seconds: 1
+    multiplier: 2
+    errors:
+      - ConnectionError
+      - TimeoutError
+      - RateLimitExceeded
+
+  error_mappings:
+    429: RateLimitExceeded
+    401: AuthenticationError
+    404: FetchError
+    default: ConnectorError
+
+validation:
+  required_fields:
+    search:
+      - query
+    get_document:
+      - id
+    get_updates:
+      - since_date
+
+  field_types:
+    query: string
+    id: string
+    since_date: datetime
+    limit: integer
+    batch_size: integer
