@@ -1,7 +1,7 @@
 import os
 import yaml
 import logging
-from typing import Dict, Any, Optional, Set, List
+from typing import Dict, Any, Optional, Set, List, cast
 from pathlib import Path
 from .connector_capabilities import ConnectorCapability
 from .exceptions.connector_error import ConnectorError
@@ -41,9 +41,13 @@ class ConnectorRegistry:
         """Load the registry from the YAML file."""
         try:
             with open(self._registry_path, 'r') as f:
-                self._registry = yaml.safe_load(f) or {}
-                if not isinstance(self._registry, dict):
-                    raise ConnectorError("Invalid registry format")
+                data = yaml.safe_load(f)
+                if not isinstance(data, dict):
+                    raise ConnectorError("Invalid registry format: must be a dictionary")
+                self._registry = cast(Dict[str, Any], data) or {
+                    "version": "1.0",
+                    "connectors": {}
+                }
                 
                 # Ensure required structure
                 if "version" not in self._registry:

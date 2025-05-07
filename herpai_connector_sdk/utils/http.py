@@ -12,12 +12,7 @@ class HTTPClient:
     def __init__(self, base_url: str, headers: Optional[Dict[str, str]] = None):
         self.base_url = base_url.rstrip('/')
         self.headers = headers or {}
-        self.session = None
-    
-    async def ensure_session(self):
-        """Ensure an aiohttp session exists."""
-        if self.session is None or self.session.closed:
-            self.session = aiohttp.ClientSession(headers=self.headers)
+        self.session = aiohttp.ClientSession(headers=self.headers)
     
     async def close(self):
         """Close the HTTP session."""
@@ -26,7 +21,6 @@ class HTTPClient:
     
     async def get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Make a GET request."""
-        await self.ensure_session()
         url = f"{self.base_url}/{path.lstrip('/')}"
         
         try:

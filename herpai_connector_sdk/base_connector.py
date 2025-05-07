@@ -5,9 +5,10 @@ import logging
 import json
 import xml.etree.ElementTree as ET
 import yaml
-from typing import Dict, Any, Optional, List, Union, Callable
+from typing import Dict, Any, Optional, List, Union, Callable, cast
 from datetime import datetime
 from dynaconf import Dynaconf
+from aiohttp import ClientResponseError
 from .i_connector import IConnector, ConnectorCapability
 from .utils.http import HTTPClient
 from .utils.rate_limiter import RateLimiter
@@ -25,14 +26,14 @@ class BaseConnector(IConnector):
     """Base implementation for YAML-driven connectors."""
     
     def __init__(self):
-        self._config = {}
+        self._config: Dict[str, Any] = {}
         self._capabilities = {
             capability.name: False for capability in ConnectorCapability
         }
         self._settings = None
         self._http_client = None
-        self._rate_limiter = None
-        self._spec = {}
+        self._rate_limiter = RateLimiter(3.0)  # Default rate limit
+        self._spec: Dict[str, Any] = {}
     
     async def install(self) -> None:
         """Install connector."""
@@ -78,7 +79,7 @@ class BaseConnector(IConnector):
         try:
             # Load YAML directly first
             with open(path, 'r') as f:
-                raw_spec = yaml.safe_load(f)
+                raw_spec = cast(Dict[str, Any], yaml.safe_load(f))
                 logger.debug(f"Raw YAML content: {raw_spec}")
             
             # Initialize Dynaconf with the YAML file
@@ -115,8 +116,8 @@ class BaseConnector(IConnector):
                         base_url = base_url.split("|")[1].rstrip("}")
                         logger.debug(f"Extracted base URL: {base_url}")
                     except (IndexError, ValueError):
-                        logger.warning(f"Invalid base URL format: {base_url}, using default")
-                        base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
+                        logger.warning(f"Invalid base URL format: {base_url}")
+                        raise ValueError("Invalid base URL format in connector specification")
                 
                 self._http_client = HTTPClient(base_url)
                 logger.info(f"Initialized HTTP client with base URL: {base_url}")
@@ -343,16 +344,16 @@ class BaseConnector(IConnector):
                 params=params
             )
             return response
-        except Exception as e:
+        except ClientResponseError as e:
             # Map errors based on specification
             error_mappings = self._spec.get("error_handling", {}).get("error_mappings", {})
-            if hasattr(e, "status"):
-                error_class = error_mappings.get(
-                    str(e.status),
-                    error_mappings.get("default", ConnectorError)
-                )
-                raise error_class(str(e))
-            raise
+            error_class = error_mappings.get(
+                str(e.status),
+                error_mappings.get("default", ConnectorError)
+            )
+            raise error_class(str(e))
+        except Exception as e:
+            raise ConnectorError(str(e))
     
     async def search(self, query: str, limit: Optional[int] = None) -> Dict[str, Any]:
         """Search using the configured endpoint."""

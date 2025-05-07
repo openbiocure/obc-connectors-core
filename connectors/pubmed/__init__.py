@@ -2,7 +2,7 @@
 
 import os
 import yaml
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, cast
 
 from .connector import PubMedConnector
 
@@ -13,7 +13,7 @@ def get_version() -> str:
         raise ImportError(f"connector.yaml not found")
         
     with open(yaml_path) as f:
-        spec = yaml.safe_load(f)
+        spec = cast(Dict[str, Any], yaml.safe_load(f))
         if not spec.get('version'):
             raise ImportError(f"Version not specified in connector.yaml")
         return spec['version']

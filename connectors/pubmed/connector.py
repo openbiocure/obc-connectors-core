@@ -4,12 +4,16 @@ import os
 import logging
 import yaml
 from datetime import datetime
-from typing import Dict, Any, AsyncIterator, Optional, Union
+from typing import Dict, Any, AsyncIterator, Optional, Union, cast, TypedDict
 import xml.etree.ElementTree as ET
 
 from herpai_connector_sdk.base_connector import BaseConnector
 
 logger = logging.getLogger(__name__)
+
+class ConnectorSpec(TypedDict, total=False):
+    api: Dict[str, Dict[str, Any]]
+    version: str
 
 class PubMedConnector(BaseConnector):
     """YAML-driven connector for the PubMed/NCBI E-utilities API."""
@@ -21,9 +25,8 @@ class PubMedConnector(BaseConnector):
         # Load YAML directly first for debugging
         with open(spec_path, 'r') as f:
             raw_spec = yaml.safe_load(f)
-            logger.debug(f"Raw YAML content: {raw_spec}")
-            logger.debug(f"Raw endpoints: {raw_spec.get('api', {}).get('endpoints', {})}")
-        
+            logger.debug("Raw YAML content: %s", raw_spec)
+            
         # Now load through the base class
         self.load_specification(spec_path)
         logger.debug(f"Loaded specification: {self._spec}")
@@ -63,7 +66,7 @@ class PubMedConnector(BaseConnector):
             logger.error(f"Error parsing PubMed date: {str(e)}")
             return None
 
-    def _transform_pubmed_author_name(self, element: ET.Element) -> Optional[Dict[str, str]]:
+    def _transform_pubmed_author_name(self, element: ET.Element) -> Optional[Dict[str, Optional[str]]]:
         """Transform PubMed author element into a structured author object."""
         try:
             last_name = element.findtext("LastName") or ""
