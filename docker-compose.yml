@@ -1,7 +1,7 @@
-version: '3.8'
+version: "3.8"
 
 networks:
-  herpai-net:
+  OpenBioCure-net:
     driver: bridge
 
 volumes:
@@ -13,27 +13,27 @@ volumes:
 services:
   postgres:
     image: postgres:14
-    container_name: herpai-postgres
+    container_name: OpenBioCure-postgres
     environment:
-      POSTGRES_USER: ${DB_USER:-herpai}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-herpai}
-      POSTGRES_DB: ${DB_NAME:-herpai_ingestion}
+      POSTGRES_USER: ${DB_USER:-OpenBioCure}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-OpenBioCure}
+      POSTGRES_DB: ${DB_NAME:-obc_ingestion}
     ports:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "${DB_USER:-herpai}"]
+      test: ["CMD", "pg_isready", "-U", "${DB_USER:-OpenBioCure}"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
-      - herpai-net
+      - OpenBioCure-net
 
   rabbitmq:
     image: rabbitmq:3-management
-    container_name: herpai-rabbitmq
+    container_name: OpenBioCure-rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
@@ -48,11 +48,11 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - herpai-net
+      - OpenBioCure-net
 
   qdrant:
     image: qdrant/qdrant
-    container_name: herpai-qdrant
+    container_name: OpenBioCure-qdrant
     ports:
       - "6333:6333"
     volumes:
@@ -63,11 +63,11 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - herpai-net
+      - OpenBioCure-net
 
   minio:
     image: minio/minio
-    container_name: herpai-minio
+    container_name: OpenBioCure-minio
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
@@ -83,11 +83,11 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - herpai-net
+      - OpenBioCure-net
 
   grobid:
     image: lfoppiano/grobid:0.7.1
-    container_name: herpai-grobid
+    container_name: OpenBioCure-grobid
     ports:
       - "8070:8070"
     healthcheck:
@@ -96,22 +96,22 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - herpai-net
+      - OpenBioCure-net
 
   dev:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    container_name: herpai-dev
+    container_name: OpenBioCure-dev
     command: sleep infinity
     volumes:
       - .:/app
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_USER=herpai
-      - DB_PASSWORD=herpai
-      - DB_NAME=herpai_ingestion
+      - DB_USER=OpenBioCure
+      - DB_PASSWORD=OpenBioCure
+      - DB_NAME=obc_ingestion
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
       - RABBITMQ_USER=guest
@@ -134,4 +134,4 @@ services:
       grobid:
         condition: service_healthy
     networks:
-      - herpai-net
+      - OpenBioCure-net

@@ -1,85 +1,77 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "name": "PubMed: Search",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "herpai_ingestion.cli.__main__",
-            "args": [
-                "debug",
-                "test",
-                "pubmed",
-                "--query", "python",
-                "--limit", "5"
-            ],
-            "env": {
-                "HERPAI_API_KEY": "${env:HERPAI_PUBMED_API_KEY}"
-            },
-            "justMyCode": false,
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "PubMed: Get Document",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "herpai_ingestion.cli.__main__",
-            "args": [
-                "debug",
-                "test",
-                "pubmed",
-                "--id", "${input:pubmedId}"
-            ],
-            "env": {
-                "HERPAI_API_KEY": "${env:HERPAI_PUBMED_API_KEY}"
-            },
-            "justMyCode": false,
-            "console": "integratedTerminal"
-        },
-        {
-            "name": "PubMed: Search with Version",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "herpai_ingestion.cli.__main__",
-            "args": [
-                "debug",
-                "test",
-                "pubmed",
-                "--query", "${input:searchQuery}",
-                "--limit", "${input:resultLimit}",
-                "--version", "${input:connectorVersion}"
-            ],
-            "env": {
-                "HERPAI_API_KEY": "${env:HERPAI_PUBMED_API_KEY}"
-            },
-            "justMyCode": false,
-            "console": "integratedTerminal"
-        }
-    ],
-    "inputs": [
-        {
-            "id": "pubmedId",
-            "type": "promptString",
-            "description": "Enter PubMed document ID",
-            "default": "33782617"
-        },
-        {
-            "id": "searchQuery",
-            "type": "promptString",
-            "description": "Enter search query",
-            "default": "python"
-        },
-        {
-            "id": "resultLimit",
-            "type": "promptString",
-            "description": "Enter number of results",
-            "default": "5"
-        },
-        {
-            "id": "connectorVersion",
-            "type": "promptString",
-            "description": "Enter connector version (leave empty for latest)",
-            "default": "1.0.0"
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "PubMed: Search",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "obc_ingestion.cli.__main__",
+      "args": ["debug", "test", "pubmed", "--query", "python", "--limit", "5"],
+      "env": {
+        "OpenBioCureI_KEY": "${env:obcOpenBioCureD_API_KEY}"
+      },
+      "justMyCode": false,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "PubMed: Get Document",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "OpenBioCuregestion.cli.__main__",
+      "args": ["debug", "test", "pubmed", "--id", "${input:pubmedId}"],
+      "env": {
+        "OpenBioCureI_KEY": "${env:obcOpenBioCureD_API_KEY}"
+      },
+      "justMyCode": false,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "PubMed: Search with Version",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "OpenBioCuregestion.cli.__main__",
+      "args": [
+        "debug",
+        "test",
+        "pubmed",
+        "--query",
+        "${input:searchQuery}",
+        "--limit",
+        "${input:resultLimit}",
+        "--version",
+        "${input:connectorVersion}"
+      ],
+      "env": {
+        "OpenBioCureI_KEY": "${env:obcOpenBioCureD_API_KEY}"
+      },
+      "justMyCode": false,
+      "console": "integratedTerminal"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "pubmedId",
+      "type": "promptString",
+      "description": "Enter PubMed document ID",
+      "default": "33782617"
+    },
+    {
+      "id": "searchQuery",
+      "type": "promptString",
+      "description": "Enter search query",
+      "default": "python"
+    },
+    {
+      "id": "resultLimit",
+      "type": "promptString",
+      "description": "Enter number of results",
+      "default": "5"
+    },
+    {
+      "id": "connectorVersion",
+      "type": "promptString",
+      "description": "Enter connector version (leave empty for latest)",
+      "default": "1.0.0"
+    }
+  ]
 }

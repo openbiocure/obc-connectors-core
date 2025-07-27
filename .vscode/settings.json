@@ -1,0 +1,104 @@
+{
+  "python.defaultInterpreterPath": "./.venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": false,
+  "python.linting.flake8Enabled": false,
+  "python.linting.mypyEnabled": false,
+  "python.formatting.provider": "black",
+  "python.formatting.blackArgs": ["--line-length", "100"],
+  "python.sortImports.args": ["--profile", "black", "--line-length", "100"],
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": [".", "-v", "--tb=short"],
+  "python.analysis.typeCheckingMode": "strict",
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.autoSearchPaths": true,
+  "python.analysis.extraPaths": [
+    "./obc_connector_sdk",
+    "./obc_ingestion",
+    "./connectors"
+  ],
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/.pytest_cache": true,
+    "**/.mypy_cache": true,
+    "**/.ruff_cache": true,
+    "**/.venv": true,
+    "**/.env": true
+  },
+  "search.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/.pytest_cache": true,
+    "**/.mypy_cache": true,
+    "**/.ruff_cache": true,
+    "**/.venv": true,
+    "**/.env": true
+  },
+  "editor.formatOnSave": true,
+  "[toml]": {
+    "editor.formatOnSave": false
+  },
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
+  "editor.rulers": [100],
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "emmet.includeLanguages": {
+    "python": "html"
+  },
+  "python.analysis.diagnosticMode": "workspace",
+  "python.analysis.stubPath": "./typings",
+  "python.analysis.useLibraryCodeForTypes": true,
+  "python.analysis.completeFunctionParens": true,
+  "python.analysis.inlayHints.functionReturnTypes": true,
+  "python.analysis.inlayHints.variableTypes": true,
+  "python.analysis.inlayHints.pytestParameters": true,
+  "python.analysis.importFormat": "absolute",
+  "python.analysis.indexing": true,
+  "python.analysis.packageIndexDepths": [
+    {
+      "name": "obc_connector_sdk",
+      "depth": 5
+    },
+    {
+      "name": "obc_ingestion",
+      "depth": 5
+    },
+    {
+      "name": "connectors",
+      "depth": 5
+    }
+  ],
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportMissingImports": "warning",
+    "reportMissingTypeStubs": "none",
+    "reportUnusedImport": "warning",
+    "reportUnusedClass": "warning",
+    "reportUnusedFunction": "warning",
+    "reportUnusedVariable": "warning"
+  },
+  "python.analysis.include": [
+    "obc_connector_sdk/**/*.py",
+    "obc_ingestion/**/*.py",
+    "connectors/**/*.py",
+    "tools/**/*.py"
+  ],
+  "python.analysis.exclude": [
+    "**/__pycache__",
+    "**/*.pyc",
+    "**/.pytest_cache",
+    "**/.mypy_cache",
+    "**/.ruff_cache",
+    "**/.venv",
+    "**/.env",
+    "**/node_modules"
+  ],
+  "python.analysis.ignore": ["**/setup.py", "**/build/**", "**/dist/**"],
+  "cSpell.enabled": false
+}

@@ -1,9 +1,9 @@
-# HerpAI-Ingestion: Solution Design Document
+# OpenBioCure-Ingestion: Solution Design Document
 
-A flexible and scalable library for ingesting, processing, and storing biomedical data from various sources, built for the HerpAI Project to enrich AI Agents with domain-specific knowledge and power Retrieval-Augmented Generation (RAG) systems.
+A flexible and scalable library for ingesting, processing, and storing biomedical data from various sources, built for the OpenBioCure Project to enrich AI Agents with domain-specific knowledge and power Retrieval-Augmented Generation (RAG) systems.
 
 ## Table of Contents
-- [HerpAI-Ingestion: Solution Design Document](#herpai-ingestion-solution-design-document)
+- [OpenBioCure-Ingestion: Solution Design Document](#OpenBioCure-ingestion-solution-design-document)
   - [Table of Contents](#table-of-contents)
   - [System Overview](#system-overview)
   - [Architecture](#architecture)
@@ -41,18 +41,18 @@ A flexible and scalable library for ingesting, processing, and storing biomedica
 - [Delete a job](#delete-a-job)
 ## System Overview
 
-HerpAI-Ingestion is a critical component of the HerpAI ecosystem, designed to gather and process biomedical data with a focus on herpes viruses and related treatments. It serves as the knowledge acquisition layer, feeding domain-specific information into the AI systems that power HerpAI's capabilities.
+OpenBioCure-Ingestion is a critical component of the OpenBioCure ecosystem, designed to gather and process biomedical data with a focus on herpes viruses and related treatments. It serves as the knowledge acquisition layer, feeding domain-specific information into the AI systems that power OpenBioCure's capabilities.
 
 **Key Objectives:**
 1. Systematically collect and process biomedical data from authoritative sources
 2. Transform raw data into structured, AI-consumable formats
-3. Enable Retrieval-Augmented Generation (RAG) for HerpAI Agents
+3. Enable Retrieval-Augmented Generation (RAG) for OpenBioCure Agents
 4. Maintain an up-to-date knowledge base with the latest research and clinical information
 5. Provide a flexible, extensible architecture that can incorporate new data sources
 
-**Role in HerpAI Ecosystem:**
+**Role in OpenBioCure Ecosystem:**
 - Provides the foundation for domain knowledge acquisition
-- Enables HerpAI Agents to reference specific scientific information
+- Enables OpenBioCure Agents to reference specific scientific information
 - Powers data-driven insights and analysis capabilities
 - Ensures responses are grounded in accurate, current medical literature
 
@@ -60,56 +60,56 @@ HerpAI-Ingestion is a critical component of the HerpAI ecosystem, designed to ga
 
 ### Connector SDK Components
 
-The `herpai_connector_sdk` package provides the foundation for all connectors:
+The `obc_connector_sdk` package provides the foundation for all connectors:
 
 ### Interfaces and Base Classes
 
 ```python
-# herpai_connector_sdk/interfaces.py
+# obc_connector_sdk/interfaces.py
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Any
 
 class IConnector(ABC):
-    """Interface for all connectors in the HerpAI-Ingestion system."""
-    
+    """Interface for all connectors in the OpenBioCure-Ingestion system."""
+
     @abstractmethod
     async def install(self) -> None:
         """Install connector dependencies or set up resources."""
         pass
-    
+
     @abstractmethod
     async def uninstall(self) -> None:
         """Clean up connector resources."""
         pass
-    
+
     @abstractmethod
     async def authenticate(self, config: Dict[str, Any]) -> None:
         """Authenticate with the data source."""
         pass
-    
+
     @abstractmethod
     async def search(self, query: str, limit: Optional[int] = None) -> Dict[str, Any]:
         """Search the data source with the given query."""
         pass
-    
+
     @abstractmethod
     async def get_by_id(self, id: str) -> Dict[str, Any]:
         """Retrieve a specific document by ID."""
         pass
-    
+
     @property
     @abstractmethod
     def name(self) -> str:
         """Get the connector name."""
         pass
-    
+
     @property
     @abstractmethod
     def capabilities(self) -> Dict[str, bool]:
         """Get the connector capabilities."""
         pass
 
-# herpai_connector_sdk/base.py
+# obc_connector_sdk/base.py
 from .interfaces import IConnector
 from .models import Document
 from typing import Dict, List, Optional, Any
@@ -121,7 +121,7 @@ logger = logging.getLogger(__name__)
 
 class BaseConnector(IConnector):
     """Base implementation for connectors with common functionality."""
-    
+
     def __init__(self):
         self._config = {}
         self._capabilities = {
@@ -130,43 +130,43 @@ class BaseConnector(IConnector):
             "supports_date_filtering": False,
             "requires_authentication": False
         }
-    
+
     async def install(self) -> None:
         """Default implementation of install that logs the action."""
         logger.info(f"Installing connector: {self.name}")
-    
+
     async def uninstall(self) -> None:
         """Default implementation of uninstall that logs the action."""
         logger.info(f"Uninstalling connector: {self.name}")
-    
+
     def configure(self, config: Dict[str, Any]) -> None:
         """Configure the connector with the provided settings."""
         self._config = config
-    
+
     def load_specification(self, path: Optional[str] = None) -> Dict[str, Any]:
         """Load the connector specification from a YAML file."""
         if not path:
             # Try to find specification in the connector's directory
             module_dir = os.path.dirname(os.path.abspath(__file__))
             path = os.path.join(module_dir, "connector.yaml")
-        
+
         if not os.path.exists(path):
             logger.warning(f"Specification file not found: {path}")
             return {}
-        
+
         try:
             with open(path, "r") as f:
                 spec = yaml.safe_load(f)
-                
+
                 # Update capabilities from spec
                 if "capabilities" in spec:
                     self._capabilities.update(spec["capabilities"])
-                
+
                 return spec
         except Exception as e:
             logger.error(f"Error loading specification: {str(e)}")
             return {}
-    
+
     @property
     def capabilities(self) -> Dict[str, bool]:
         """Get the connector capabilities."""
@@ -176,7 +176,7 @@ class BaseConnector(IConnector):
 ### Connector Data Models
 
 ```python
-# herpai_connector_sdk/models.py
+# obc_connector_sdk/models.py
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 from datetime import datetime
@@ -217,34 +217,34 @@ class SearchResult:
 ### Connector Utilities
 
 ```python
-# herpai_connector_sdk/utils/rate_limiter.py
+# obc_connector_sdk/utils/rate_limiter.py
 import asyncio
 import time
 from typing import Optional
 
 class RateLimiter:
     """Utility for managing API rate limits."""
-    
+
     def __init__(self, requests_per_second: float):
         self.requests_per_second = requests_per_second
         self._last_request_time = 0.0
         self._lock = asyncio.Lock()
-    
+
     async def acquire(self):
         """Acquire permission to make a request."""
         async with self._lock:
             current_time = time.time()
             time_since_last_request = current_time - self._last_request_time
             min_interval = 1.0 / self.requests_per_second
-            
+
             if time_since_last_request < min_interval:
                 # Need to wait
                 wait_time = min_interval - time_since_last_request
                 await asyncio.sleep(wait_time)
-            
+
             self._last_request_time = time.time()
 
-# herpai_connector_sdk/utils/http.py
+# obc_connector_sdk/utils/http.py
 import aiohttp
 from typing import Dict, Any, Optional
 import logging
@@ -253,27 +253,27 @@ logger = logging.getLogger(__name__)
 
 class HTTPClient:
     """HTTP client utility for connectors."""
-    
+
     def __init__(self, base_url: str, headers: Optional[Dict[str, str]] = None):
         self.base_url = base_url.rstrip('/')
         self.headers = headers or {}
         self.session = None
-    
+
     async def ensure_session(self):
         """Ensure an aiohttp session exists."""
         if self.session is None or self.session.closed:
             self.session = aiohttp.ClientSession(headers=self.headers)
-    
+
     async def close(self):
         """Close the HTTP session."""
         if self.session and not self.session.closed:
             await self.session.close()
-    
+
     async def get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Make a GET request."""
         await self.ensure_session()
         url = f"{self.base_url}/{path.lstrip('/')}"
-        
+
         try:
             async with self.session.get(url, params=params) as response:
                 response.raise_for_status()
@@ -289,7 +289,7 @@ class HTTPClient:
 ### Connector Exceptions
 
 ```python
-# herpai_connector_sdk/exceptions.py
+# obc_connector_sdk/exceptions.py
 class ConnectorError(Exception):
     """Base exception for connector-related errors."""
     pass
@@ -385,11 +385,11 @@ Example implementation of a PubMed connector:
 
 ```python
 # connectors/pubmed/connector.py
-from herpai_connector_sdk.base import BaseConnector
-from herpai_connector_sdk.models import Document, Author, SearchResult
-from herpai_connector_sdk.utils.rate_limiter import RateLimiter
-from herpai_connector_sdk.utils.http import HTTPClient
-from herpai_connector_sdk.exceptions import AuthenticationError, RateLimitExceeded, FetchError
+from obc_connector_sdk.base import BaseConnector
+from obc_connector_sdk.models import Document, Author, SearchResult
+from obc_connector_sdk.utils.rate_limiter import RateLimiter
+from obc_connector_sdk.utils.http import HTTPClient
+from obc_connector_sdk.exceptions import AuthenticationError, RateLimitExceeded, FetchError
 
 from typing import Dict, List, Optional, Any
 from datetime import datetime
@@ -401,46 +401,46 @@ logger = logging.getLogger(__name__)
 
 class PubMedConnector(BaseConnector):
     """Connector for the PubMed/NCBI E-utilities API."""
-    
+
     def __init__(self):
         super().__init__()
-        
+
         # Load connector specification
         spec_path = os.path.join(os.path.dirname(__file__), "connector.yaml")
         self._spec = self.load_specification(spec_path)
-        
+
         # Initialize HTTP client
         base_url = self._spec.get("api", {}).get("base_url", "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/")
         self._http_client = HTTPClient(base_url)
-        
+
         # Set up rate limiter based on specification
         requests_per_second = self._spec.get("api", {}).get("rate_limit", {}).get("requests_per_second", 3)
         self._rate_limiter = RateLimiter(requests_per_second)
-    
+
     @property
     def name(self) -> str:
         """Get the connector name."""
         return "pubmed"
-    
+
     async def authenticate(self, config: Dict[str, Any]) -> None:
         """Authenticate with the PubMed API."""
         api_key = config.get("api_key")
-        
+
         if api_key:
             # Update rate limit if API key is provided
             requests_per_second = self._spec.get("api", {}).get("rate_limit", {}).get("with_api_key", 10)
             self._rate_limiter = RateLimiter(requests_per_second)
-            
+
             # Store API key for later use
             self._config["api_key"] = api_key
             logger.info("PubMed connector authenticated with API key")
         else:
             logger.info("PubMed connector using unauthenticated access (lower rate limits)")
-    
+
     async def search(self, query: str, limit: Optional[int] = None) -> Dict[str, Any]:
         """Search PubMed with the given query."""
         await self._rate_limiter.acquire()
-        
+
         # Prepare search parameters
         params = {
             "db": "pubmed",
@@ -448,68 +448,68 @@ class PubMedConnector(BaseConnector):
             "retmode": "json",
             "retmax": limit or 20
         }
-        
+
         # Add API key if available
         if self._config.get("api_key"):
             params["api_key"] = self._config["api_key"]
-        
+
         try:
             # Perform the search
             response = await self._http_client.get("esearch.fcgi", params)
-            
+
             # Extract document IDs
             result = response.get("esearchresult", {})
             document_ids = result.get("idlist", [])
             total_count = int(result.get("count", 0))
-            
+
             return SearchResult(
                 query=query,
                 total_results=total_count,
                 document_ids=document_ids,
                 metadata={"db": "pubmed"}
             ).__dict__
-            
+
         except Exception as e:
             logger.error(f"Error searching PubMed: {str(e)}")
             raise
-    
+
     async def get_by_id(self, id: str) -> Dict[str, Any]:
         """Retrieve a specific document from PubMed by ID."""
         await self._rate_limiter.acquire()
-        
+
         # Prepare fetch parameters
         params = {
             "db": "pubmed",
             "id": id,
             "retmode": "xml"
         }
-        
+
         # Add API key if available
         if self._config.get("api_key"):
             params["api_key"] = self._config["api_key"]
-        
+
         try:
             # Fetch the document
             response = await self._http_client.get("efetch.fcgi", params)
-            
+
             # Parse XML response
             root = ET.fromstring(response)
             article = root.find(".//PubmedArticle")
-            
+
             if article is None:
                 raise FetchError(id, "Document not found or invalid format")
-            
+
             # Extract document data
             title = article.findtext(".//ArticleTitle") or "Untitled"
             abstract = article.findtext(".//AbstractText")
-            
+
             # Extract publication date
             pub_date_elem = article.find(".//PubDate")
             if pub_date_elem is not None:
                 year = pub_date_elem.findtext("Year")
                 month = pub_date_elem.findtext("Month") or "1"
                 day = pub_date_elem.findtext("Day") or "1"
-                
+
                 # Convert month name to number if needed
                 if not month.isdigit():
                     month_map = {
@@ -518,14 +518,14 @@ class PubMedConnector(BaseConnector):
                         "Sep": "9", "Oct": "10", "Nov": "11", "Dec": "12"
                     }
                     month = month_map.get(month[:3], "1")
-                
+
                 try:
                     publication_date = datetime(int(year), int(month), int(day))
                 except (ValueError, TypeError):
                     publication_date = None
             else:
                 publication_date = None
-            
+
             # Extract DOI
             doi = None
             article_id_list = article.find(".//ArticleIdList")
@@ -534,7 +534,7 @@ class PubMedConnector(BaseConnector):
                     if article_id.get("IdType") == "doi":
                         doi = article_id.text
                         break
-            
+
             # Extract authors
             authors = []
             author_list = article.find(".//AuthorList")
@@ -543,19 +543,19 @@ class PubMedConnector(BaseConnector):
                     last_name = author_elem.findtext("LastName") or ""
                     fore_name = author_elem.findtext("ForeName") or ""
                     initials = author_elem.findtext("Initials") or ""
-                    
+
                     name = f"{last_name}, {fore_name}".strip()
                     if not name:
                         name = initials
-                    
+
                     # Extract affiliation
                     affiliation = author_elem.findtext(".//Affiliation")
-                    
+
                     authors.append(Author(
                         name=name,
                         affiliation=affiliation
                     ).__dict__)
-            
+
             # Extract keywords
             keywords = []
             keyword_list = article.find(".//KeywordList")
@@ -563,7 +563,7 @@ class PubMedConnector(BaseConnector):
                 for keyword in keyword_list.findall("Keyword"):
                     if keyword.text:
                         keywords.append(keyword.text)
-            
+
             # Create document
             document = Document(
                 id=id,
@@ -577,9 +577,9 @@ class PubMedConnector(BaseConnector):
                 keywords=keywords,
                 document_type="article"
             )
-            
+
             return document.__dict__
-            
+
         except Exception as e:
             logger.error(f"Error fetching PubMed document {id}: {str(e)}")
             raise
@@ -613,7 +613,7 @@ configuration:
       required: false
       description: NCBI API key for higher rate limits
       sensitive: true
-    
+
     - name: batch_size
       type: integer
       required: false
@@ -651,34 +651,34 @@ The extraction phase is responsible for acquiring documents from source systems:
 ```python
 class SourceQueryExecutor:
     """Executes queries against data sources."""
-    
+
     def __init__(self, connector_registry: ConnectorRegistry):
         self._connector_registry = connector_registry
-    
+
     async def execute_query(self, source: str, query: str, limit: Optional[int] = None) -> Dict[str, Any]:
         """Execute a query against a specific source."""
         connector = self._connector_registry.get_connector(source)
         if not connector:
             raise ValueError(f"Connector not found: {source}")
-        
+
         return await connector.search(query, limit)
 
 class DocumentAcquisitionService:
     """Acquires documents from data sources."""
-    
+
     def __init__(self, connector_registry: ConnectorRegistry, storage_manager: StorageManager):
         self._connector_registry = connector_registry
         self._storage_manager = storage_manager
-    
+
     async def acquire_document(self, source: str, document_id: str) -> str:
         """Acquire a document from a data source."""
         connector = self._connector_registry.get_connector(source)
         if not connector:
             raise ValueError(f"Connector not found: {source}")
-        
+
         # Get document data
         document_data = await connector.get_by_id(document_id)
-        
+
         # Store raw document
         document_path = await self._storage_manager.store_raw_document(
             source=source,
@@ -686,7 +686,7 @@ class DocumentAcquisitionService:
             content=document_data.get("content"),
             metadata=document_data.get("metadata")
         )
-        
+
         return document_path
 ```
 
@@ -716,35 +716,35 @@ The transformation phase processes raw documents into structured, normalized for
 ```python
 class DocumentProcessor:
     """Processes raw documents into structured formats."""
-    
+
     def __init__(self, config: Dict[str, Any]):
         self._config = config
         # Initialize document processing tools
-    
+
     async def process_document(self, document_path: str) -> Dict[str, Any]:
         """Process a document at the given path."""
         # Detect document format
         document_format = self._detect_format(document_path)
-        
+
         # Select appropriate processor
         processor = self._get_processor_for_format(document_format)
-        
+
         # Process document
         processed_document = await processor.process(document_path)
-        
+
         return processed_document
-    
+
     def _detect_format(self, document_path: str) -> str:
         """Detect the format of a document."""
         # Implementation details...
-    
+
     def _get_processor_for_format(self, document_format: str) -> 'FormatProcessor':
         """Get the appropriate processor for a document format."""
         # Implementation details...
 
 class PDFProcessor(FormatProcessor):
     """Processor for PDF documents."""
-    
+
     async def process(self, document_path: str) -> Dict[str, Any]:
         """Process a PDF document."""
         # Use GROBID for scientific PDF processing
@@ -752,7 +752,7 @@ class PDFProcessor(FormatProcessor):
 
 class EntityExtractor:
     """Extracts entities from processed documents."""
-    
+
     async def extract_entities(self, processed_document: Dict[str, Any]) -> Dict[str, Any]:
         """Extract entities from a processed document."""
         # Implementation details...
@@ -785,82 +785,82 @@ The loading phase stores processed documents and their metadata:
 ```python
 class StorageManager:
     """Manages document storage across different backends."""
-    
+
     def __init__(self, config: Dict[str, Any]):
         self._config = config
         self._storage_provider = self._create_storage_provider()
-    
+
     def _create_storage_provider(self) -> 'IStorageProvider':
         """Create the appropriate storage provider based on configuration."""
         provider_type = self._config.get("storage", {}).get("type", "local")
-        
+
         if provider_type == "azure":
             return AzureBlobStorageProvider(self._config.get("storage", {}).get("azure", {}))
         elif provider_type == "s3":
             return S3StorageProvider(self._config.get("storage", {}).get("s3", {}))
         else:
             return LocalStorageProvider(self._config.get("storage", {}).get("local", {}))
-    
+
     async def store_raw_document(self, source: str, document_id: str, content: bytes, metadata: Dict[str, Any]) -> str:
         """Store a raw document."""
         path = f"raw/{source}/{document_id}"
         await self._storage_provider.store(path, content)
-        
+
         # Store metadata
         await self._store_metadata(path + ".meta.json", metadata)
-        
+
         return path
-    
+
     async def store_processed_document(self, source: str, document_id: str, content: Dict[str, Any]) -> str:
         """Store a processed document."""
         path = f"processed/{source}/{document_id}"
         await self._storage_provider.store(path + ".json", json.dumps(content).encode("utf-8"))
-        
+
         return path
-    
+
     async def _store_metadata(self, path: str, metadata: Dict[str, Any]) -> None:
         """Store metadata for a document."""
         await self._storage_provider.store(path, json.dumps(metadata).encode("utf-8"))
 
 class MetadataCatalog:
     """Manages document metadata in a database."""
-    
+
     def __init__(self, db_context: IDbContext):
         self._db_context = db_context
-    
+
     async def store_document_metadata(self, document: Document) -> None:
         """Store metadata for a document."""
         async with self._db_context.session() as session:
             # Store document metadata
             await session.add(document)
             await session.commit()
-    
+
     async def find_documents(self, query: Dict[str, Any]) -> List[Document]:
         """Find documents matching a query."""
         async with self._db_context.session() as session:
             # Build query
             query_builder = self._build_query(query)
-            
+
             # Execute query
             result = await session.execute(query_builder)
-            
+
             return result.scalars().all()
-    
+
     def _build_query(self, query: Dict[str, Any]):
         """Build a database query from a dictionary."""
         # Implementation details...
 
 class VectorEmbeddingService:
     """Generates and stores vector embeddings for documents."""
-    
+
     def __init__(self, config: Dict[str, Any]):
         self._config = config
         # Initialize embedding model
-    
+
     async def generate_embeddings(self, document: Dict[str, Any]) -> Dict[str, Any]:
         """Generate embeddings for a document."""
         # Implementation details...
-    
+
     async def store_embeddings(self, document_id: str, embeddings: Dict[str, Any]) -> None:
         """Store embeddings for a document."""
         # Implementation details...
@@ -868,7 +868,7 @@ class VectorEmbeddingService:
 
 ## Data Model and Repository Pattern
 
-HerpAI-Ingestion implements the repository pattern as defined in the OpenBioCure CoreLib to provide a clean separation between domain entities and data access logic. This architectural approach ensures maintainability, testability, and flexibility in the persistence layer.
+OpenBioCure-Ingestion implements the repository pattern as defined in the OpenBioCure CoreLib to provide a clean separation between domain entities and data access logic. This architectural approach ensures maintainability, testability, and flexibility in the persistence layer.
 
 ### Domain Entities
 
@@ -883,9 +883,9 @@ from datetime import datetime
 
 class Document(BaseEntity):
     """Document entity representing a biomedical document."""
-    
+
     __tablename__ = "documents"
-    
+
     source: Mapped[str] = mapped_column(nullable=False)
     source_id: Mapped[str] = mapped_column(nullable=False, index=True)
     title: Mapped[str] = mapped_column(nullable=False)
@@ -896,7 +896,7 @@ class Document(BaseEntity):
     document_type: Mapped[str] = mapped_column(nullable=False)
     processing_status: Mapped[str] = mapped_column(nullable=False)
     storage_path: Mapped[Optional[str]] = mapped_column(nullable=True)
-    
+
     # Relationships
     authors: Mapped[List["Author"]] = relationship(
         secondary="document_authors",
@@ -914,14 +914,14 @@ class Document(BaseEntity):
 
 class Author(BaseEntity):
     """Author entity representing a document author."""
-    
+
     __tablename__ = "authors"
-    
+
     name: Mapped[str] = mapped_column(nullable=False)
     orcid: Mapped[Optional[str]] = mapped_column(nullable=True, index=True)
     email: Mapped[Optional[str]] = mapped_column(nullable=True)
     affiliation: Mapped[Optional[str]] = mapped_column(nullable=True)
-    
+
     # Relationships
     documents: Mapped[List["Document"]] = relationship(
         secondary="document_authors",
@@ -930,9 +930,9 @@ class Author(BaseEntity):
 
 class DocumentAuthor(BaseEntity):
     """Junction table for document-author many-to-many relationship."""
-    
+
     __tablename__ = "document_authors"
-    
+
     document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), nullable=False)
     author_id: Mapped[str] = mapped_column(ForeignKey("authors.id"), nullable=False)
     author_position: Mapped[int] = mapped_column(nullable=False)
@@ -940,9 +940,9 @@ class DocumentAuthor(BaseEntity):
 
 class EntityMention(BaseEntity):
     """Entity mention in a document."""
-    
+
     __tablename__ = "entity_mentions"
-    
+
     document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), nullable=False)
     entity_type: Mapped[str] = mapped_column(nullable=False, index=True)
     entity_id: Mapped[str] = mapped_column(nullable=False, index=True)
@@ -950,19 +950,19 @@ class EntityMention(BaseEntity):
     start_offset: Mapped[int] = mapped_column(nullable=False)
     end_offset: Mapped[int] = mapped_column(nullable=False)
     confidence: Mapped[float] = mapped_column(nullable=False)
-    
+
     # Relationships
     document: Mapped["Document"] = relationship(back_populates="entity_mentions")
 
 class Citation(BaseEntity):
     """Citation relationship between documents."""
-    
+
     __tablename__ = "citations"
-    
+
     citing_document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), nullable=False)
     cited_document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), nullable=False)
     context: Mapped[Optional[str]] = mapped_column(nullable=True)
-    
+
     # Relationships
     citing_document: Mapped["Document"] = relationship(
         foreign_keys=[citing_document_id],
@@ -975,9 +975,9 @@ class Citation(BaseEntity):
 
 class ConnectorExecution(BaseEntity):
     """Tracks connector execution history."""
-    
+
     __tablename__ = "connector_executions"
-    
+
     connector_name: Mapped[str] = mapped_column(nullable=False, index=True)
     query: Mapped[str] = mapped_column(nullable=False)
     start_time: Mapped[datetime] = mapped_column(nullable=False)
@@ -999,7 +999,7 @@ from openbiocure_corelib.data.specification import Specification
 
 class IDocumentRepository(IRepository[Document], Protocol):
     """Repository interface for Document entities."""
-    
+
     async def find_by_source_id(self, source: str, source_id: str) -> Optional[Document]: ...
     async def find_by_doi(self, doi: str) -> Optional[Document]: ...
     async def find_by_processing_status(self, status: str) -> List[Document]: ...
@@ -1007,28 +1007,28 @@ class IDocumentRepository(IRepository[Document], Protocol):
 
 class IAuthorRepository(IRepository[Author], Protocol):
     """Repository interface for Author entities."""
-    
+
     async def find_by_name(self, name: str) -> List[Author]: ...
     async def find_by_orcid(self, orcid: str) -> Optional[Author]: ...
     async def find_or_create(self, name: str, orcid: Optional[str] = None) -> Author: ...
 
 class IEntityMentionRepository(IRepository[EntityMention], Protocol):
     """Repository interface for EntityMention entities."""
-    
+
     async def find_by_document(self, document_id: str) -> List[EntityMention]: ...
     async def find_by_entity(self, entity_type: str, entity_id: str) -> List[EntityMention]: ...
     async def delete_by_document(self, document_id: str) -> None: ...
 
 class ICitationRepository(IRepository[Citation], Protocol):
     """Repository interface for Citation entities."""
-    
+
     async def find_citations_for_document(self, document_id: str) -> List[Citation]: ...
     async def find_citing_documents(self, document_id: str) -> List[Document]: ...
     async def delete_by_document(self, document_id: str) -> None: ...
 
 class IConnectorExecutionRepository(IRepository[ConnectorExecution], Protocol):
     """Repository interface for ConnectorExecution entities."""
-    
+
     async def find_by_connector(self, connector_name: str) -> List[ConnectorExecution]: ...
     async def find_latest_by_connector(self, connector_name: str) -> Optional[ConnectorExecution]: ...
     async def update_status(self, execution_id: str, status: str, end_time: Optional[datetime] = None) -> ConnectorExecution: ...
@@ -1043,57 +1043,57 @@ from openbiocure_corelib.data.specification import Specification
 
 class DocumentBySourceIdSpecification(Specification[Document]):
     """Specification for finding documents by source and source_id."""
-    
+
     def __init__(self, source: str, source_id: str):
         self.source = source
         self.source_id = source_id
-    
+
     def to_expression(self):
         return (Document.source == self.source) & (Document.source_id == self.source_id)
 
 class DocumentByDoiSpecification(Specification[Document]):
     """Specification for finding documents by DOI."""
-    
+
     def __init__(self, doi: str):
         self.doi = doi
-    
+
     def to_expression(self):
         return Document.doi == self.doi
 
 class DocumentByProcessingStatusSpecification(Specification[Document]):
     """Specification for finding documents by processing status."""
-    
+
     def __init__(self, status: str):
         self.status = status
-    
+
     def to_expression(self):
         return Document.processing_status == self.status
 
 class AuthorByOrcidSpecification(Specification[Author]):
     """Specification for finding authors by ORCID."""
-    
+
     def __init__(self, orcid: str):
         self.orcid = orcid
-    
+
     def to_expression(self):
         return Author.orcid == self.orcid
 
 class EntityMentionByDocumentSpecification(Specification[EntityMention]):
     """Specification for finding entity mentions by document."""
-    
+
     def __init__(self, document_id: str):
         self.document_id = document_id
-    
+
     def to_expression(self):
         return EntityMention.document_id == self.document_id
 
 class EntityMentionByEntityTypeAndIdSpecification(Specification[EntityMention]):
     """Specification for finding entity mentions by entity type and ID."""
-    
+
     def __init__(self, entity_type: str, entity_id: str):
         self.entity_type = entity_type
         self.entity_id = entity_id
-    
+
     def to_expression(self):
         return (EntityMention.entity_type == self.entity_type) & (EntityMention.entity_id == self.entity_id)
 ```
@@ -1109,49 +1109,49 @@ from datetime import datetime, UTC
 
 class DocumentRepository(Repository[Document], IDocumentRepository):
     """Repository implementation for Document entities."""
-    
+
     # No explicit __init__ needed - the engine will handle dependency injection
     # The Repository base class from OpenBioCure CoreLib handles the db_context
-    
+
     async def find_by_source_id(self, source: str, source_id: str) -> Optional[Document]:
         """Find a document by source and source_id."""
         return await self.find_one(DocumentBySourceIdSpecification(source, source_id))
-    
+
     async def find_by_doi(self, doi: str) -> Optional[Document]:
         """Find a document by DOI."""
         return await self.find_one(DocumentByDoiSpecification(doi))
-    
+
     async def find_by_processing_status(self, status: str) -> List[Document]:
         """Find documents by processing status."""
         return await self.find(DocumentByProcessingStatusSpecification(status))
-    
+
     async def update_processing_status(self, document_id: str, status: str) -> Document:
         """Update the processing status of a document."""
         document = await self.get_by_id(document_id)
         if not document:
             raise ValueError(f"Document not found: {document_id}")
-        
+
         document.processing_status = status
         document.updated_at = datetime.now(UTC)
-        
+
         return await self.update(document)
 
 class AuthorRepository(Repository[Author], IAuthorRepository):
     """Repository implementation for Author entities."""
-    
+
     #No explicit __init__ needed - the engine will handle dependency injection
 ```
 ## Directory Structure
 
-The HerpAI-Ingestion project follows a modular directory structure that clearly separates the connector SDK, core ingestion system, and individual connectors:
+The OpenBioCure-Ingestion project follows a modular directory structure that clearly separates the connector SDK, core ingestion system, and individual connectors:
 
 ```py
-herpai-ingestion/
+OpenBioCure-ingestion/
 ├── README.md
 ├── pyproject.toml
 ├── LICENSE
 │
-├── herpai_connector_sdk/        # The connector SDK (future separate package)
+├── obc_connector_sdk/        # The connector SDK (future separate package)
 │   ├── __init__.py
 │   ├── interfaces.py            # Core interfaces (IConnector)
 │   ├── base.py                  # Base implementations (BaseConnector)
@@ -1159,7 +1159,7 @@ herpai-ingestion/
 │   ├── exceptions.py            # Custom exceptions
 │   └── utils/                   # Utilities for connectors
 │
-├── herpai_ingestion/            # Main ingestion system
+├── obc_ingestion/            # Main ingestion system
 │   ├── __init__.py
 │   ├── cli/                     # Command-line interface
 │   │   ├── __init__.py
@@ -1288,20 +1288,20 @@ logger = logging.getLogger(__name__)
 # Define custom startup tasks
 class ConnectorDiscoveryTask(StartupTask):
     """Startup task to discover and register available connectors."""
-    
+
     # Run after database initialization (order 30)
     order = 40
-    
+
     async def execute(self) -> None:
         """Execute the connector discovery."""
         logger.info("Discovering connectors...")
-        
+
         # Resolve connector registry from the engine
         connector_registry = engine.resolve(ConnectorRegistry)
-        
+
         # Discover available connectors
         connectors = await connector_registry.discover_connectors()
-        
+
         logger.info(f"Discovered {len(connectors)} connectors: {', '.join(connectors)}")
 
 async def main():
@@ -1309,23 +1309,23 @@ async def main():
     # The engine will auto-discover our domain entities, repositories, and startup tasks
     engine.initialize()
     await engine.start()
-    
+
     # Now we can resolve repositories and services
     document_repository = engine.resolve(IDocumentRepository)
     connector_registry = engine.resolve(ConnectorRegistry)
-    
+
     # Create ingestion service
     ingestion_service = IngestionService(
         connector_registry=connector_registry
     )
-    
+
     # Example ingestion
     result = await ingestion_service.ingest(
         source="pubmed",
         query="herpes simplex virus treatment",
         limit=100
     )
-    
+
     logger.info(f"Processed {result['documents_processed']} documents")
 
 if __name__ == "__main__":
@@ -1342,7 +1342,7 @@ database:
   type: postgresql
   host: ${DB_HOST:-localhost}
   port: 5432
-  database: herpai
+  database: OpenBioCure
   username: ${DB_USER}
   password: ${DB_PASSWORD}
 
@@ -1351,9 +1351,9 @@ storage:
   azure:
     account_name: ${AZURE_STORAGE_ACCOUNT}
     account_key: ${AZURE_STORAGE_KEY}
-    container_name: herpai-datalake
+    container_name: OpenBioCure-datalake
     prefix: documents/
-  
+
 connectors:
   pubmed:
     enabled: true
@@ -1374,9 +1374,9 @@ startup_tasks:
   ConnectorDiscoveryTask:
     enabled: true
     scan_paths:
-      - herpai_ingestion.connectors
+      - obc_ingestion.connectors
       - custom_connectors
-  
+
 scheduler:
   enabled: true
   jobs:
@@ -1403,7 +1403,7 @@ processing:
 The scheduler functionality is exposed through a comprehensive CLI interface:
 
 ```python
-# herpai_ingestion/cli/commands/scheduler.py
+# obc_ingestion/cli/commands/scheduler.py
 import asyncio
 import logging
 import click
@@ -1411,7 +1411,7 @@ import json
 from tabulate import tabulate
 from datetime import datetime, UTC
 from openbiocure_corelib import engine
-from herpai_ingestion.services.scheduler_service import SchedulerService
+from obc_ingestion.services.scheduler_service import SchedulerService
 
 logger = logging.getLogger(__name__)
 
@@ -1427,13 +1427,13 @@ async def list_jobs(output_json):
     # Initialize and start the engine
     engine.initialize()
     await engine.start()
-    
+
     # Resolve scheduler service
     scheduler_service = engine.resolve(SchedulerService)
-    
+
     # Get all jobs
     jobs = await scheduler_service.get_jobs()
-    
+
     if output_json:
         # Output as JSON
         jobs_data = [
@@ -1456,13 +1456,13 @@ async def list_jobs(output_json):
         if not jobs:
             click.echo("No scheduled jobs found.")
             return
-        
+
         table_data = []
         for job in jobs:
             status = "Enabled" if job.enabled else "Disabled"
             last_run = job.last_run.strftime("%Y-%m-%d %H:%M:%S") if job.last_run else "Never"
             next_run = job.next_run.strftime("%Y-%m-%d %H:%M:%S") if job.next_run else "Not scheduled"
-            
+
             table_data.append([
                 job.name,
                 job.source,
@@ -1473,7 +1473,7 @@ async def list_jobs(output_json):
                 last_run,
                 next_run
             ])
-        
+
         headers = ["Name", "Source", "Query", "Schedule", "Limit", "Status", "Last Run", "Next Run"]
         click.echo(tabulate(table_data, headers=headers, tablefmt="grid"))
 
@@ -1489,10 +1489,10 @@ async def add_job(name, source, query, schedule, limit, disabled):
     # Initialize and start the engine
     engine.initialize()
     await engine.start()
-    
+
     # Resolve scheduler service
     scheduler_service = engine.resolve(SchedulerService)
-    
+
     try:
         # Create job
         job = await scheduler_service.create_job({
@@ -1503,13 +1503,13 @@ async def add_job(name, source, query, schedule, limit, disabled):
             "limit": limit,
             "enabled": not disabled
         })
-        
+
         click.echo(f"Created scheduled job: {job.name}")
         click.echo(f"ID: {job.id}")
         click.echo(f"Schedule: {job.schedule}")
         click.echo(f"Next run: {job.next_run.strftime('%Y-%m-%d %H:%M:%S') if job.next_run else 'Not scheduled'}")
         click.echo(f"Status: {'Disabled' if disabled else 'Enabled'}")
-        
+
     except ValueError as e:
         click.echo(f"Error: {str(e)}", err=True)
     except Exception as e:
@@ -1529,10 +1529,10 @@ async def update_job(job_id, name, source, query, schedule, limit, enable):
     # Initialize and start the engine
     engine.initialize()
     await engine.start()
-    
+
     # Resolve scheduler service
     scheduler_service = engine.resolve(SchedulerService)
-    
+
     # Build update data
     update_data = {}
     if name is not None:
@@ -1547,17 +1547,17 @@ async def update_job(job_id, name, source, query, schedule, limit, enable):
         update_data["limit"] = limit
     if enable is not None:
         update_data["enabled"] = enable
-    
+
     if not update_data:
         click.echo("No updates specified.", err=True)
         return
-    
+
     try:
         # Update job
         job = await scheduler_service.update_job(job_id, update_data)
-        
+
         click.echo(f"Updated scheduled job: {job.name}")
-        
+
         # Show what changed
         for key, value in update_data.items():
             if key == "enabled":
@@ -1567,7 +1567,7 @@ async def update_job(job_id, name, source, query, schedule, limit, enable):
                 click.echo(f"Next run: {job.next_run.strftime('%Y-%m-%d %H:%M:%S') if job.next_run else 'Not scheduled'}")
             else:
                 click.echo(f"{key.title()}: {value}")
-        
+
     except ValueError as e:
         click.echo(f"Error: {str(e)}", err=True)
     except Exception as e:
@@ -1582,29 +1582,29 @@ async def delete_job(job_id, force):
     # Initialize and start the engine
     engine.initialize()
     await engine.start()
-    
+
     # Resolve scheduler service
     scheduler_service = engine.resolve(SchedulerService)
-    
+
     try:
         # Get job to confirm deletion
         job = await scheduler_service.get_job(job_id)
         if not job:
             click.echo(f"Job not found: {job_id}", err=True)
             return
-        
+
         # Confirm deletion
         if not force and not click.confirm(f"Delete job '{job.name}'?"):
             click.echo("Deletion cancelled.")
             return
-        
+
         # Delete job
         success = await scheduler_service.delete_job(job_id)
         if success:
             click.echo(f"Deleted job: {job.name}")
         else:
             click.echo(f"Failed to delete job: {job.name}", err=True)
-        
+
     except Exception as e:
         logger.error(f"Error deleting job: {str(e)}")
         click.echo(f"Error deleting job: {str(e)}", err=True)
@@ -1616,16 +1616,16 @@ async def enable_job(job_id):
     # Initialize and start the engine
     engine.initialize()
     await engine.start()
-    
+
     # Resolve scheduler service
     scheduler_service = engine.resolve(SchedulerService)
-    
+
     try:
         # Update job
         job = await scheduler_service.update_job(job_id, {"enabled": True})
         click.echo(f"Enabled job: {job.name}")
         click.echo(f"Next run: {job.next_run.strftime('%Y-%m-%d %H:%M:%S') if job.next_run else 'Not scheduled'}")
-        
+
     except ValueError as e:
         click.echo(f"Error: {str(e)}", err=True)
     except Exception as e:
@@ -1639,15 +1639,15 @@ async def disable_job(job_id):
     # Initialize and start the engine
     engine.initialize()
     await engine.start()
-    
+
     # Resolve scheduler service
     scheduler_service = engine.resolve(SchedulerService)
-    
+
     try:
         # Update job
         job = await scheduler_service.update_job(job_id, {"enabled": False})
         click.echo(f"Disabled job: {job.name}")
-        
+
     except ValueError as e:
         click.echo(f"Error: {str(e)}", err=True)
     except Exception as e:
@@ -1661,30 +1661,30 @@ async def run_job(job_id):
     # Initialize and start the engine
     engine.initialize()
     await engine.start()
-    
+
     # Resolve needed services
     scheduler_service = engine.resolve(SchedulerService)
     ingestion_service = engine.resolve(IngestionService)
-    
+
     try:
         # Get job
         job = await scheduler_service.get_job(job_id)
         if not job:
             click.echo(f"Job not found: {job_id}", err=True)
             return
-        
+
         click.echo(f"Running job: {job.name}")
         click.echo(f"Source: {job.source}")
         click.echo(f"Query: {job.query}")
         click.echo(f"Limit: {job.limit}")
-        
+
         # Run ingestion
         result = await ingestion_service.ingest(job.source, job.query, job.limit)
-        
+
         click.echo(f"Job completed.")
         click.echo(f"Documents found: {result['documents_found']}")
         click.echo(f"Documents processed: {result['documents_processed']}")
-        
+
     except Exception as e:
         logger.error(f"Error running job: {str(e)}")
         click.echo(f"Error running job: {str(e)}", err=True)
@@ -1697,14 +1697,14 @@ def register_commands(cli):
 ### CLI Main Integration
 
 ```python
-# herpai_ingestion/cli/main.py
+# obc_ingestion/cli/main.py
 import asyncio
 import click
 from . import commands
 
 @click.group()
 def cli():
-    """HerpAI-Ingestion: Biomedical data ingestion toolkit."""
+    """OpenBioCure-Ingestion: Biomedical data ingestion toolkit."""
     pass
 
 # Register commands
@@ -1724,37 +1724,37 @@ if __name__ == "__main__":
 
    ```bash
 # List all scheduled jobs
-herpai-ingestion scheduler list
+OpenBioCure-ingestion scheduler list
 
 # Add a new scheduled job (daily at 2 AM)
-herpai-ingestion scheduler add --name "daily-pubmed" \
+OpenBioCure-ingestion scheduler add --name "daily-pubmed" \
   --source "pubmed" \
   --query "herpes simplex virus treatment" \
   --schedule "0 2 * * *" \
   --limit 200
 
 # Update a job's schedule (change to weekly on Sunday at 3 AM)
-herpai-ingestion scheduler update 1234-5678-90ab-cdef \
+OpenBioCure-ingestion scheduler update 1234-5678-90ab-cdef \
   --schedule "0 3 * * 0"
 
 # Disable a job temporarily
-herpai-ingestion scheduler disable 1234-5678-90ab-cdef
+OpenBioCure-ingestion scheduler disable 1234-5678-90ab-cdef
 
 # Enable a job
-herpai-ingestion scheduler enable 1234-5678-90ab-cdef
+OpenBioCure-ingestion scheduler enable 1234-5678-90ab-cdef
 
 # Run a job immediately
-herpai-ingestion scheduler run 1234-5678-90ab-cdef
+OpenBioCure-ingestion scheduler run 1234-5678-90ab-cdef
 
 # Delete a job
-herpai-ingestion scheduler delete 1234-5678-90ab-cdef
+OpenBioCure-ingestion scheduler delete 1234-5678-90ab-cdef
 ```
 
 ## Connector System
 
 ### Dynamic Connector Registration
 
-The HerpAI Connector SDK uses a dynamic registration system for connectors. Instead of hardcoding connector types, each connector registers itself with the system at runtime. This allows for:
+The OpenBioCure Connector SDK uses a dynamic registration system for connectors. Instead of hardcoding connector types, each connector registers itself with the system at runtime. This allows for:
 
 - Dynamic discovery of available connectors
 - Extensibility without modifying the core SDK
@@ -1767,7 +1767,7 @@ To create a new connector:
 
 1. Register your connector type:
 ```python
-from herpai_connector_sdk.interfaces.connector_type import ConnectorTypeRegistry
+from obc_connector_sdk.interfaces.connector_type import ConnectorTypeRegistry
 
 # Register at module level
 ConnectorTypeRegistry.register("my_connector", "My Custom Connector")
@@ -1809,7 +1809,7 @@ configuration:
 
 3. Configure your connector:
 ```python
-from herpai_connector_sdk.interfaces import ConnectorConfig
+from obc_connector_sdk.interfaces import ConnectorConfig
 
 config = ConnectorConfig(
     type="my_connector",  # Must match registered type
@@ -1823,7 +1823,7 @@ config = ConnectorConfig(
 The `ConnectorTypeRegistry` provides methods to work with connector types:
 
 ```python
-from herpai_connector_sdk.interfaces.connector_type import ConnectorTypeRegistry
+from obc_connector_sdk.interfaces.connector_type import ConnectorTypeRegistry
 
 # List all registered connectors
 available_types = ConnectorTypeRegistry.list_types()

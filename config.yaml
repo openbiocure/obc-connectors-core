@@ -1,7 +1,7 @@
-# HerpAI-Ingestion Configuration
+# OpenBioCure-Ingestion Configuration
 
 app:
-  name: "HerpAI-Ingestion"
+  name: "OpenBioCure-Ingestion"
   log_level: "DEBUG"
 
 database:
@@ -21,10 +21,10 @@ storage:
   azure:
     account_name: ""
     account_key: ""
-    container_name: "herpai-datalake"
+    container_name: "OpenBioCure-datalake"
     prefix: "documents/"
   s3:
-    bucket: "herpai-datalake"
+    bucket: "OpenBioCure-datalake"
     prefix: "documents/"
     region: "us-east-1"
     access_key: "" # Leave empty to use IAM role or environment variables
@@ -39,9 +39,9 @@ rabbitmq:
   username: "guest"
   password: "guest"
   vhost: "/"
-  exchange: "herpai"
-  queue_prefix: "herpai_ingestion_"
-  routing_key_prefix: "herpai.ingestion."
+  exchange: "OpenBioCure"
+  queue_prefix: "obc_ingestion_"
+  routing_key_prefix: "OpenBioCure.ingestion."
   retry:
     max_attempts: 5
     initial_interval: 1.0 # seconds

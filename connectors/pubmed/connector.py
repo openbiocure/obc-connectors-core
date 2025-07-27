@@ -1,108 +1,89 @@
-"""PubMed Connector Implementation."""
+"""Simple PubMed Connector Implementation."""
 
-import os
 import logging
-import yaml
 from datetime import datetime
-from typing import Dict, Any, AsyncIterator, Optional, Union
-import xml.etree.ElementTree as ET
+from typing import Any, Dict, List, Optional
 
-from herpai_connector_sdk.base_connector import BaseConnector
+from obc_connector_sdk.base_connector import BaseConnector
 
 logger = logging.getLogger(__name__)
 
+
 class PubMedConnector(BaseConnector):
-    """YAML-driven connector for the PubMed/NCBI E-utilities API."""
-    
+    """Simple PubMed connector without YAML complexity."""
+
     def __init__(self):
-        super().__init__()
-        spec_path = os.path.join(os.path.dirname(__file__), "connector.yaml")
-        
-        # Load YAML directly first for debugging
-        with open(spec_path, 'r') as f:
-            raw_spec = yaml.safe_load(f)
-            logger.debug(f"Raw YAML content: {raw_spec}")
-            logger.debug(f"Raw endpoints: {raw_spec.get('api', {}).get('endpoints', {})}")
-        
-        # Now load through the base class
-        self.load_specification(spec_path)
-        logger.debug(f"Loaded specification: {self._spec}")
-        logger.debug(f"API endpoints: {self._spec.get('api', {}).get('endpoints', {})}")
+        super().__init__(
+            base_url="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/",
+            rate_limit=3,  # PubMed rate limit
+        )
 
-    def _transform_integer(self, value: Union[str, int, float]) -> Optional[int]:
-        """Transform a value into an integer."""
-        try:
-            if isinstance(value, str):
-                # Remove any non-numeric characters (except negative sign)
-                clean_value = ''.join(c for c in value if c.isdigit() or c == '-')
-                return int(clean_value)
-            return int(value)
-        except (ValueError, TypeError) as e:
-            logger.error(f"Error converting to integer: {str(e)}")
-            return None
+    async def search(self, query: str, limit: int = 100) -> List[Dict[str, Any]]:
+        """Search PubMed for papers."""
+        params = {"db": "pubmed", "term": query, "retmax": limit, "retmode": "json"}
 
-    def _transform_pubmed_date_parser(self, element: ET.Element) -> Optional[datetime]:
-        """Transform PubMed publication date XML element into a datetime object."""
-        try:
-            # Extract date components
-            year = element.findtext(".//Year") or "1970"
-            month = element.findtext(".//Month") or "1"
-            day = element.findtext(".//Day") or "1"
+        response = await self.make_request("esearch.fcgi", params)
 
-            # Handle month names
-            if isinstance(month, str) and not month.isdigit():
-                month_map = {
-                    "Jan": "1", "Feb": "2", "Mar": "3", "Apr": "4",
-                    "May": "5", "Jun": "6", "Jul": "7", "Aug": "8",
-                    "Sep": "9", "Oct": "10", "Nov": "11", "Dec": "12"
-                }
-                month = month_map.get(month[:3], "1")
+        # Extract paper IDs
+        paper_ids = self.extract_list(response, "esearchresult.idlist")
 
-            return datetime(int(year), int(month), int(day))
-        except (ValueError, TypeError, AttributeError) as e:
-            logger.error(f"Error parsing PubMed date: {str(e)}")
-            return None
+        # Get full papers
+        papers = []
+        for paper_id in paper_ids:
+            paper = await self.get_by_id(paper_id)
+            if paper:
+                papers.append(paper)
 
-    def _transform_pubmed_author_name(self, element: ET.Element) -> Optional[Dict[str, str]]:
-        """Transform PubMed author element into a structured author object."""
-        try:
-            last_name = element.findtext("LastName") or ""
-            fore_name = element.findtext("ForeName") or ""
-            affiliation = element.findtext(".//Affiliation")
-            
-            return {
-                "name": f"{last_name}, {fore_name}".strip(", "),
-                "affiliation": affiliation if affiliation else None
-            }
-        except (AttributeError, TypeError) as e:
-            logger.error(f"Error formatting author data: {str(e)}")
-            return None
+        return papers
 
-    def _transform_pubmed_keywords(self, element: ET.Element) -> list[str]:
-        """Transform PubMed keywords into a list of strings."""
-        try:
-            return [kw.text.strip() for kw in element.findall(".//Keyword") if kw.text and kw.text.strip()]
-        except (AttributeError, TypeError) as e:
-            logger.error(f"Error extracting keywords: {str(e)}")
-            return []
-    
+    async def get_by_id(self, paper_id: str) -> Dict[str, Any]:
+        """Get paper by ID."""
+        params = {"db": "pubmed", "id": paper_id, "retmode": "xml"}
+
+        response = await self.make_request("efetch.fcgi", params)
+
+        # Simple XML parsing (you can use xml.etree.ElementTree for more complex parsing)
+        return {
+            "id": paper_id,
+            "title": self.extract_text(response, "PubmedArticle.Article.ArticleTitle"),
+            "abstract": self.extract_text(response, "PubmedArticle.Article.Abstract.AbstractText"),
+            "authors": self.extract_authors(response),
+            "publication_date": self.extract_publication_date(response),
+            "doi": self.extract_text(response, "PubmedArticle.Article.ELocationID"),
+            "source": "pubmed",
+        }
+
+    def extract_authors(self, response: Dict[str, Any]) -> List[str]:
+        """Extract authors from response."""
+        authors = self.extract_list(response, "PubmedArticle.Article.AuthorList.Author")
+        return [
+            f"{author.get('LastName', '')} {author.get('ForeName', '')}".strip()
+            for author in authors
+            if author
+        ]
+
+    def extract_publication_date(self, response: Dict[str, Any]) -> Optional[str]:
+        """Extract publication date from response."""
+        pub_date = self.extract_text(response, "PubmedArticle.Article.Journal.JournalIssue.PubDate")
+        if pub_date:
+            try:
+                return datetime.strptime(pub_date, "%Y %b %d").isoformat()
+            except ValueError:
+                return pub_date
+        return None
+
     async def authenticate(self, config: Dict[str, Any]) -> None:
         """Configure the connector with authentication."""
-        self.configure(config)
-    
-    async def get_updates(self, since: datetime) -> AsyncIterator[Dict[str, Any]]:
+        # Simple authentication - just store API key if provided
+        if config.get("api_key"):
+            self.api_key = config["api_key"]
+            logger.info("PubMed connector configured with API key")
+
+    async def get_updates(self, since: datetime) -> List[Dict[str, Any]]:
         """Get updates since a specific date."""
         # Convert date to PubMed format (YYYY/MM/DD)
         date_str = since.strftime("%Y/%m/%d")
-        
-        # Get updates using the configured endpoint
-        results = await self.search(f"(\"0001\"[EDAT] : \"{date_str}\"[EDAT])")
-        
-        # Process documents in batches
-        for doc_id in results["document_ids"]:
-            try:
-                document = await self.get_by_id(doc_id)
-                yield document
-            except Exception as e:
-                logger.error(f"Error processing document {doc_id}: {str(e)}")
-                continue 
+
+        # Search for papers published since the date
+        query = f'("{date_str}"[DP] : "3000"[DP])'
+        return await self.search(query, limit=1000)
