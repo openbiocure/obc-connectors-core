@@ -1,11 +1,12 @@
 """Utilities for dynamically loading and managing connectors."""
 
-import os
-import logging
 import importlib
-import yaml
-from typing import Type, Optional, Dict, Any, Tuple
+import logging
+import os
 from contextlib import asynccontextmanager
+from typing import Any, Dict, Optional, Tuple, Type
+
+import yaml
 
 from ..base_connector import BaseConnector
 from ..exceptions import ConnectorError
@@ -166,8 +167,10 @@ class ConnectorLoader:
         try:
             yield connector
         finally:
-            if hasattr(connector, "_http_client") and connector._http_client:
-                await connector._http_client.close()
+            if hasattr(connector, "http_client") and connector.http_client:
+                await connector.http_client.close()
+            elif hasattr(connector, "close"):
+                await connector.close()
 
     @classmethod
     async def test_connector(

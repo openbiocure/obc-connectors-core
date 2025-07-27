@@ -18,40 +18,58 @@ class PubMedConnector(BaseConnector):
             rate_limit=3,  # PubMed rate limit
         )
 
-    async def search(self, query: str, limit: int = 100) -> List[Dict[str, Any]]:
+    async def search(self, query: str, limit: int = 100) -> Dict[str, Any]:
         """Search PubMed for papers."""
         params = {"db": "pubmed", "term": query, "retmax": limit, "retmode": "json"}
 
-        response = await self.make_request("esearch.fcgi", params)
+        try:
+            response = await self.make_request("esearch.fcgi", params)
 
-        # Extract paper IDs
-        paper_ids = self.extract_list(response, "esearchresult.idlist")
+            # Extract paper IDs
+            paper_ids = self.extract_list(response, "esearchresult.idlist")
+            total_count = int(self.extract_text(response, "esearchresult.count") or 0)
 
-        # Get full papers
-        papers = []
-        for paper_id in paper_ids:
-            paper = await self.get_by_id(paper_id)
-            if paper:
-                papers.append(paper)
-
-        return papers
+            return {
+                "query": query,
+                "total_results": total_count,
+                "document_ids": paper_ids,
+                "metadata": {"db": "pubmed"},
+            }
+        except Exception as e:
+            logger.error(f"Search failed: {e}")
+            return {
+                "query": query,
+                "total_results": 0,
+                "document_ids": [],
+                "metadata": {"db": "pubmed", "error": str(e)},
+            }
 
     async def get_by_id(self, paper_id: str) -> Dict[str, Any]:
         """Get paper by ID."""
         params = {"db": "pubmed", "id": paper_id, "retmode": "xml"}
 
-        response = await self.make_request("efetch.fcgi", params)
+        try:
+            # For XML responses, we need to handle them differently
+            url = f"{self.base_url}efetch.fcgi"
+            async with self.http_client.get(url, params=params) as response:
+                response.raise_for_status()
+                xml_content = await response.text()
 
-        # Simple XML parsing (you can use xml.etree.ElementTree for more complex parsing)
-        return {
-            "id": paper_id,
-            "title": self.extract_text(response, "PubmedArticle.Article.ArticleTitle"),
-            "abstract": self.extract_text(response, "PubmedArticle.Article.Abstract.AbstractText"),
-            "authors": self.extract_authors(response),
-            "publication_date": self.extract_publication_date(response),
-            "doi": self.extract_text(response, "PubmedArticle.Article.ELocationID"),
-            "source": "pubmed",
-        }
+            # Simple XML parsing - for now return basic info
+            # TODO: Implement proper XML parsing with xml.etree.ElementTree
+            return {
+                "id": paper_id,
+                "title": f"Paper {paper_id}",
+                "abstract": "Abstract not parsed yet",
+                "authors": [],
+                "publication_date": None,
+                "doi": None,
+                "source": "pubmed",
+                "xml_content": xml_content[:500] + "..." if len(xml_content) > 500 else xml_content,
+            }
+        except Exception as e:
+            logger.error(f"Failed to get paper {paper_id}: {e}")
+            return {"id": paper_id, "error": str(e)}
 
     def extract_authors(self, response: Dict[str, Any]) -> List[str]:
         """Extract authors from response."""
