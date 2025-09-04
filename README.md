@@ -379,6 +379,57 @@ The system uses a combination of interfaces and events to coordinate component i
 5. **DocumentStored** - Confirms successful storage of a document
 6. **IngestionCompleted** - Marks the completion of an ingestion job
 
+## Available Connectors
+
+### PubMed Connector
+Access to the PubMed/NCBI E-utilities API for biomedical literature.
+
+### OpenAlex Connector
+Access to the OpenAlex API for comprehensive scholarly data including academic papers, authors, institutions, and citation networks.
+
+**Features:**
+- Full-text search across scholarly works
+- Author and institution search capabilities
+- Citation network access
+- Open access information
+- Research concepts and topics
+- Incremental updates support
+
+## Quick Start
+
+### Installation
+```bash
+git clone https://github.com/openbiocure/obc-connectors-core.git
+cd obc-connectors-core
+make venv
+make install-deps
+```
+
+### Basic Usage
+```bash
+# Test PubMed connector
+.venv/bin/python -m obc_ingestion.cli debug test pubmed --query "machine learning" --limit 5
+
+# Test OpenAlex connector
+.venv/bin/python -m obc_ingestion.cli debug test openalex --query "artificial intelligence" --limit 5
+```
+
+### Using in Code
+```python
+import asyncio
+from connectors.openalex.connector import OpenAlexConnector
+
+async def main():
+    connector = OpenAlexConnector()
+    results = await connector.search("machine learning", limit=10)
+    print(f"Found {results['total_results']} results")
+    await connector.close()
+
+asyncio.run(main())
+```
+
+For detailed documentation, see the [docs/](docs/) directory.
+
 ## Sample Connector Implementation
 
 Example implementation of a PubMed connector:
