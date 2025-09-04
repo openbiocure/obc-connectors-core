@@ -1,0 +1,1 @@
+"""OpenAlex connector package."""

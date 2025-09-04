@@ -68,7 +68,11 @@ def test_connector(
                     doc = await connector.get_by_id(id)
                     if doc:
                         click.echo(f"Title: {doc.get('title', 'No title')}")
-                        click.echo(f"Abstract: {doc.get('abstract', 'No abstract')[:200]}...")
+                        abstract = doc.get('abstract', 'No abstract')
+                        if abstract and abstract != 'No abstract':
+                            click.echo(f"Abstract: {abstract[:200]}...")
+                        else:
+                            click.echo(f"Abstract: {abstract}")
                     else:
                         click.echo("Document not found")
         except Exception as e:
