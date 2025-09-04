@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import quote
 
 from obc_connector_sdk.base_connector import BaseConnector
@@ -20,65 +20,94 @@ class OpenAlexConnector(BaseConnector):
         )
         self.email = None  # Optional email for better rate limits
 
-    async def search(self, query: str, limit: int = 100) -> Dict[str, Any]:
+    async def search(self, query: str, limit: int = 100) -> List[Dict[str, Any]]:
+
         """Search OpenAlex for works (papers)."""
         # URL encode the query
         encoded_query = quote(query)
 
-        # Build search parameters
-        params = {
-            "search": encoded_query,
-            "per-page": min(limit, 200),  # OpenAlex max per page is 200
-            "page": 1,
-        }
-
-        # Add email if available for better rate limits
-        if self.email:
-            params["mailto"] = self.email
+        all_works: List[Dict[str, Any]] = []
+        page = 1
+        per_page = min(200, limit)  # OpenAlex max per page is 200
 
         try:
-            response = await self.make_request("works", params)
+            while len(all_works) < limit:
+                # Calculate how many results we need for this page
+                remaining = limit - len(all_works)
+                current_per_page = min(per_page, remaining)
 
-            # Extract work IDs and metadata
-            works = response.get("results", [])
-            work_ids = [work.get("id", "").split("/")[-1] for work in works if work.get("id")]
-            total_count = response.get("meta", {}).get("count", 0)
+                # Build search parameters
+                params = {
+                    "search": encoded_query,
+                    "per-page": current_per_page,
+                    "page": page,
+                }
 
-            return {
-                "query": query,
-                "total_results": total_count,
-                "document_ids": work_ids,
-                "metadata": {
-                    "source": "openalex",
-                    "page": 1,
-                    "per_page": params["per-page"],
-                    "results_returned": len(work_ids)
-                },
-            }
+                # Add email if available for better rate limits
+                if self.email:
+                    params["mailto"] = self.email
+
+                response = await self.make_request("works", params)
+                works = response.get("results", [])
+
+                if not works:  # No more results
+                    break
+
+                # Process works and add to results
+                for work in works:
+                    if len(all_works) >= limit:
+                        break
+
+                    work_id = work.get("id", "").split("/")[-1] if work.get("id") else ""
+                    if work_id:
+                        all_works.append({
+                            "id": work_id,
+                            "title": work.get("title", "Untitled"),
+                            "abstract": self._extract_abstract(work),
+                            "authors": self._extract_authors(work),
+                            "publication_date": self._extract_publication_date(work),
+                            "doi": self._extract_doi(work),
+                            "url": work.get("id", ""),
+                            "source": "openalex",
+                            "metadata": {
+                                "type": work.get("type", ""),
+                                "language": work.get("language", ""),
+                                "is_oa": work.get("open_access", {}).get("is_oa", False) if work.get("open_access") else False,
+                                "oa_url": work.get("open_access", {}).get("oa_url", "") if work.get("open_access") else "",
+                                "cited_by_count": work.get("cited_by_count", 0),
+                                "concepts": self._extract_concepts(work),
+                                "keywords": self._extract_keywords(work),
+                            }
+                        })
+
+                page += 1
+
+                # Safety check to prevent infinite loops
+                if page > 50:  # Max 50 pages (10,000 results)
+                    logger.warning(f"Reached maximum page limit for query: {query}")
+                    break
+
+            return all_works
+
         except Exception as e:
             logger.error(f"OpenAlex search failed: {e}")
-            return {
-                "query": query,
-                "total_results": 0,
-                "document_ids": [],
-                "metadata": {"source": "openalex", "error": str(e)},
-            }
+            return []
 
-    async def get_by_id(self, work_id: str) -> Dict[str, Any]:
+    async def get_by_id(self, doc_id: str) -> Dict[str, Any]:
         """Get a work by OpenAlex ID."""
         # OpenAlex IDs can be full URLs or just the ID part
-        if work_id.startswith("https://openalex.org/"):
-            work_id = work_id.split("/")[-1]
+        if doc_id.startswith("https://openalex.org/"):
+            doc_id = doc_id.split("/")[-1]
 
-        params = {}
+        params: Dict[str, Any] = {}
         if self.email:
             params["mailto"] = self.email
 
         try:
-            response = await self.make_request(f"works/{work_id}", params)
+            response = await self.make_request(f"works/{doc_id}", params)
 
             if not response:
-                return {"id": work_id, "error": "No response from API", "source": "openalex"}
+                return {"id": doc_id, "error": "No response from API", "source": "openalex"}
 
             # Extract work details
             title = response.get("title", "Untitled")
@@ -89,7 +118,7 @@ class OpenAlexConnector(BaseConnector):
             url = response.get("id", "")
 
             return {
-                "id": work_id,
+                "id": doc_id,
                 "title": title,
                 "abstract": abstract,
                 "authors": authors,
@@ -108,8 +137,8 @@ class OpenAlexConnector(BaseConnector):
                 }
             }
         except Exception as e:
-            logger.error(f"Failed to get OpenAlex work {work_id}: {e}")
-            return {"id": work_id, "error": str(e), "source": "openalex"}
+            logger.error(f"Failed to get OpenAlex work {doc_id}: {e}")
+            return {"id": doc_id, "error": str(e), "source": "openalex"}
 
     def _extract_abstract(self, work: Dict[str, Any]) -> Optional[str]:
         """Extract abstract from work data."""
@@ -121,11 +150,12 @@ class OpenAlexConnector(BaseConnector):
         try:
             # Convert inverted index to plain text
             # This is a simplified version - in practice you'd want more sophisticated reconstruction
-            words = []
+            words: List[Tuple[int, str]] = []
             for word, positions in abstract_inverted.items():
-                if isinstance(positions, list):
-                    for pos in positions:
-                        words.append((pos, word))
+                if isinstance(positions, list) and isinstance(word, str):
+                    for pos in positions:  # type: ignore
+                        if isinstance(pos, int):
+                            words.append((int(pos), str(word)))
 
             # Sort by position and join
             words.sort(key=lambda x: x[0])
@@ -136,7 +166,7 @@ class OpenAlexConnector(BaseConnector):
 
     def _extract_authors(self, work: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Extract authors from work data."""
-        authors = []
+        authors: List[Dict[str, Any]] = []
         authorships = work.get("authorships", [])
 
         for authorship in authorships:
@@ -194,7 +224,7 @@ class OpenAlexConnector(BaseConnector):
 
     def _extract_concepts(self, work: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Extract concepts from work data."""
-        concepts = []
+        concepts: List[Dict[str, Any]] = []
         for concept in work.get("concepts", []):
             concepts.append({
                 "id": concept.get("id", ""),
@@ -229,83 +259,145 @@ class OpenAlexConnector(BaseConnector):
         query = f"from_publication_date:{date_str}"
         return await self.search(query, limit=1000)
 
-    async def search_by_author(self, author_name: str, limit: int = 100) -> Dict[str, Any]:
+    async def search_by_author(self, author_name: str, limit: int = 100) -> List[Dict[str, Any]]:
         """Search for works by a specific author."""
         # URL encode the author name
         encoded_author = quote(author_name)
 
-        params = {
-            "filter": f"author.display_name:{encoded_author}",
-            "per-page": min(limit, 200),
-            "page": 1,
-        }
-
-        if self.email:
-            params["mailto"] = self.email
+        all_works: List[Dict[str, Any]] = []
+        page = 1
+        per_page = min(200, limit)  # OpenAlex max per page is 200
 
         try:
-            response = await self.make_request("works", params)
+            while len(all_works) < limit:
+                # Calculate how many results we need for this page
+                remaining = limit - len(all_works)
+                current_per_page = min(per_page, remaining)
 
-            works = response.get("results", [])
-            work_ids = [work.get("id", "").split("/")[-1] for work in works if work.get("id")]
-            total_count = response.get("meta", {}).get("count", 0)
+                params = {
+                    "filter": f"author.display_name:{encoded_author}",
+                    "per-page": current_per_page,
+                    "page": page,
+                }
 
-            return {
-                "query": f"author:{author_name}",
-                "total_results": total_count,
-                "document_ids": work_ids,
-                "metadata": {
-                    "source": "openalex",
-                    "search_type": "author",
-                    "author_name": author_name,
-                    "results_returned": len(work_ids)
-                },
-            }
+                if self.email:
+                    params["mailto"] = self.email
+
+                response = await self.make_request("works", params)
+                works = response.get("results", [])
+
+                if not works:  # No more results
+                    break
+
+                # Process works and add to results
+                for work in works:
+                    if len(all_works) >= limit:
+                        break
+
+                    work_id = work.get("id", "").split("/")[-1] if work.get("id") else ""
+                    if work_id:
+                        all_works.append({
+                            "id": work_id,
+                            "title": work.get("title", "Untitled"),
+                            "abstract": self._extract_abstract(work),
+                            "authors": self._extract_authors(work),
+                            "publication_date": self._extract_publication_date(work),
+                            "doi": self._extract_doi(work),
+                            "url": work.get("id", ""),
+                            "source": "openalex",
+                            "metadata": {
+                                "type": work.get("type", ""),
+                                "language": work.get("language", ""),
+                                "is_oa": work.get("open_access", {}).get("is_oa", False) if work.get("open_access") else False,
+                                "oa_url": work.get("open_access", {}).get("oa_url", "") if work.get("open_access") else "",
+                                "cited_by_count": work.get("cited_by_count", 0),
+                                "concepts": self._extract_concepts(work),
+                                "keywords": self._extract_keywords(work),
+                                "search_type": "author",
+                                "author_name": author_name,
+                            }
+                        })
+
+                page += 1
+
+                # Safety check to prevent infinite loops
+                if page > 50:  # Max 50 pages (10,000 results)
+                    logger.warning(f"Reached maximum page limit for author search: {author_name}")
+                    break
+
+            return all_works
+
         except Exception as e:
             logger.error(f"OpenAlex author search failed: {e}")
-            return {
-                "query": f"author:{author_name}",
-                "total_results": 0,
-                "document_ids": [],
-                "metadata": {"source": "openalex", "error": str(e)},
-            }
+            return []
 
-    async def search_by_institution(self, institution_name: str, limit: int = 100) -> Dict[str, Any]:
+    async def search_by_institution(self, institution_name: str, limit: int = 100) -> List[Dict[str, Any]]:
         """Search for works from a specific institution."""
         encoded_institution = quote(institution_name)
 
-        params = {
-            "filter": f"institutions.display_name:{encoded_institution}",
-            "per-page": min(limit, 200),
-            "page": 1,
-        }
-
-        if self.email:
-            params["mailto"] = self.email
+        all_works: List[Dict[str, Any]] = []
+        page = 1
+        per_page = min(200, limit)  # OpenAlex max per page is 200
 
         try:
-            response = await self.make_request("works", params)
+            while len(all_works) < limit:
+                # Calculate how many results we need for this page
+                remaining = limit - len(all_works)
+                current_per_page = min(per_page, remaining)
 
-            works = response.get("results", [])
-            work_ids = [work.get("id", "").split("/")[-1] for work in works if work.get("id")]
-            total_count = response.get("meta", {}).get("count", 0)
+                params = {
+                    "filter": f"institutions.display_name:{encoded_institution}",
+                    "per-page": current_per_page,
+                    "page": page,
+                }
 
-            return {
-                "query": f"institution:{institution_name}",
-                "total_results": total_count,
-                "document_ids": work_ids,
-                "metadata": {
-                    "source": "openalex",
-                    "search_type": "institution",
-                    "institution_name": institution_name,
-                    "results_returned": len(work_ids)
-                },
-            }
+                if self.email:
+                    params["mailto"] = self.email
+
+                response = await self.make_request("works", params)
+                works = response.get("results", [])
+
+                if not works:  # No more results
+                    break
+
+                # Process works and add to results
+                for work in works:
+                    if len(all_works) >= limit:
+                        break
+
+                    work_id = work.get("id", "").split("/")[-1] if work.get("id") else ""
+                    if work_id:
+                        all_works.append({
+                            "id": work_id,
+                            "title": work.get("title", "Untitled"),
+                            "abstract": self._extract_abstract(work),
+                            "authors": self._extract_authors(work),
+                            "publication_date": self._extract_publication_date(work),
+                            "doi": self._extract_doi(work),
+                            "url": work.get("id", ""),
+                            "source": "openalex",
+                            "metadata": {
+                                "type": work.get("type", ""),
+                                "language": work.get("language", ""),
+                                "is_oa": work.get("open_access", {}).get("is_oa", False) if work.get("open_access") else False,
+                                "oa_url": work.get("open_access", {}).get("oa_url", "") if work.get("open_access") else "",
+                                "cited_by_count": work.get("cited_by_count", 0),
+                                "concepts": self._extract_concepts(work),
+                                "keywords": self._extract_keywords(work),
+                                "search_type": "institution",
+                                "institution_name": institution_name,
+                            }
+                        })
+
+                page += 1
+
+                # Safety check to prevent infinite loops
+                if page > 50:  # Max 50 pages (10,000 results)
+                    logger.warning(f"Reached maximum page limit for institution search: {institution_name}")
+                    break
+
+            return all_works
+
         except Exception as e:
             logger.error(f"OpenAlex institution search failed: {e}")
-            return {
-                "query": f"institution:{institution_name}",
-                "total_results": 0,
-                "document_ids": [],
-                "metadata": {"source": "openalex", "error": str(e)},
-            }
+            return []

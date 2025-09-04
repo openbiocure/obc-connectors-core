@@ -57,18 +57,18 @@ from connectors.openalex.connector import OpenAlexConnector
 async def main():
     # Create connector
     connector = OpenAlexConnector()
-    
+
     # Search for papers
     results = await connector.search("machine learning", limit=10)
     print(f"Found {results['total_results']} results")
-    
+
     # Get a specific document
     if results['document_ids']:
         doc_id = results['document_ids'][0]
         doc = await connector.get_by_id(doc_id)
         print(f"Title: {doc['title']}")
         print(f"Authors: {[author['name'] for author in doc['authors']]}")
-    
+
     # Clean up
     await connector.close()
 
@@ -189,7 +189,7 @@ make quality-check
    ```python
    # connectors/your_connector/connector.py
    from obc_connector_sdk.base_connector import BaseConnector
-   
+
    class YourConnector(BaseConnector):
        # Implementation here
    ```
@@ -243,7 +243,7 @@ docker-compose ps
    ```bash
    # Make sure virtual environment is activated
    source .venv/bin/activate
-   
+
    # Reinstall dependencies
    make install-deps
    ```
@@ -252,7 +252,7 @@ docker-compose ps
    ```bash
    # Add email for OpenAlex
    .venv/bin/python -m obc_ingestion.cli debug test openalex --api-key "your-email@example.com"
-   
+
    # Add API key for PubMed
    .venv/bin/python -m obc_ingestion.cli debug test pubmed --api-key "your-pubmed-key"
    ```
@@ -294,25 +294,25 @@ from connectors.openalex.connector import OpenAlexConnector
 
 async def process_papers():
     connector = OpenAlexConnector()
-    
+
     # Search for papers
     results = await connector.search("machine learning in healthcare", limit=20)
-    
+
     print(f"Found {results['total_results']} papers")
-    
+
     # Process each paper
     for doc_id in results['document_ids'][:5]:  # Process first 5
         doc = await connector.get_by_id(doc_id)
-        
+
         print(f"\nTitle: {doc['title']}")
         print(f"DOI: {doc.get('doi', 'N/A')}")
         print(f"Authors: {len(doc['authors'])}")
         print(f"Concepts: {len(doc['metadata']['concepts'])}")
-        
+
         # Extract key concepts
         concepts = doc['metadata']['concepts'][:3]  # Top 3 concepts
         print(f"Key concepts: {[c['display_name'] for c in concepts]}")
-    
+
     await connector.close()
 
 asyncio.run(process_papers())
@@ -326,23 +326,23 @@ from connectors.pubmed.connector import PubMedConnector
 
 async def batch_process():
     connector = PubMedConnector()
-    
+
     queries = [
         "cancer treatment",
-        "diabetes research", 
+        "diabetes research",
         "heart disease prevention"
     ]
-    
+
     all_results = []
-    
+
     for query in queries:
         print(f"Searching: {query}")
         results = await connector.search(query, limit=10)
         all_results.extend(results['document_ids'])
         print(f"Found {len(results['document_ids'])} papers")
-    
+
     print(f"\nTotal papers found: {len(all_results)}")
-    
+
     await connector.close()
 
 asyncio.run(batch_process())

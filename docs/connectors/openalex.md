@@ -80,14 +80,14 @@ from connectors.openalex.connector import OpenAlexConnector
 
 async def search_example():
     connector = OpenAlexConnector()
-    
+
     # Search for papers about machine learning
     results = await connector.search("machine learning", limit=10)
-    
+
     print(f"Found {results['total_results']} results")
     for doc_id in results['document_ids']:
         print(f"- {doc_id}")
-    
+
     await connector.close()
 ```
 
@@ -96,15 +96,15 @@ async def search_example():
 ```python
 async def get_document_example():
     connector = OpenAlexConnector()
-    
+
     # Get a specific document
     doc = await connector.get_by_id("W2033731173")
-    
+
     print(f"Title: {doc['title']}")
     print(f"Authors: {[author['name'] for author in doc['authors']]}")
     print(f"DOI: {doc['doi']}")
     print(f"Publication Date: {doc['publication_date']}")
-    
+
     await connector.close()
 ```
 
@@ -113,14 +113,14 @@ async def get_document_example():
 ```python
 async def author_search_example():
     connector = OpenAlexConnector()
-    
+
     # Search for works by a specific author
     results = await connector.search_by_author("Seyedali Mirjalili", limit=5)
-    
+
     print(f"Found {results['total_results']} works by this author")
     for doc_id in results['document_ids']:
         print(f"- {doc_id}")
-    
+
     await connector.close()
 ```
 
@@ -129,14 +129,14 @@ async def author_search_example():
 ```python
 async def institution_search_example():
     connector = OpenAlexConnector()
-    
+
     # Search for works from a specific institution
     results = await connector.search_by_institution("Stanford University", limit=5)
-    
+
     print(f"Found {results['total_results']} works from this institution")
     for doc_id in results['document_ids']:
         print(f"- {doc_id}")
-    
+
     await connector.close()
 ```
 
@@ -147,13 +147,13 @@ from datetime import datetime, timedelta
 
 async def incremental_updates_example():
     connector = OpenAlexConnector()
-    
+
     # Get works published in the last 7 days
     since_date = datetime.now() - timedelta(days=7)
     results = await connector.get_updates(since_date)
-    
+
     print(f"Found {len(results['document_ids'])} new works")
-    
+
     await connector.close()
 ```
 

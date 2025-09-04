@@ -38,13 +38,42 @@ The example will demonstrate:
 - Showing author information, concepts, and citation data
 - Demonstrating various search capabilities
 
-#### Customization
+### PubMed Connector Example
 
-You can modify the example to:
-- Change search queries
-- Adjust result limits
-- Add your email for better rate limits
-- Test different document IDs
+**File:** `pubmed_example.py`
+
+A comprehensive example demonstrating all features of the PubMed connector:
+
+- **Basic Search** - Search for biomedical literature
+- **Document Retrieval** - Get detailed information about specific papers
+- **Advanced Search** - Use field tags and filters
+- **MeSH Term Search** - Search using Medical Subject Headings
+- **Journal Search** - Find works in specific journals
+- **Incremental Updates** - Get recently published works
+- **Configuration** - Set up API key for higher rate limits
+- **Error Handling** - Demonstrate error handling patterns
+
+#### Running the Example
+
+```bash
+# Make sure you're in the project root directory
+cd /path/to/obc-connectors-core
+
+# Activate virtual environment
+source .venv/bin/activate
+
+# Run the example
+python examples/pubmed_example.py
+```
+
+#### Expected Output
+
+The example will demonstrate:
+- Searching for papers about "cancer research"
+- Retrieving detailed information about the first result
+- Showing author information, MeSH terms, and journal data
+- Demonstrating advanced search capabilities
+- Error handling for invalid queries and documents
 
 ## Creating Your Own Examples
 
@@ -59,12 +88,12 @@ from connectors.your_connector.connector import YourConnector
 
 async def main():
     connector = YourConnector()
-    
+
     try:
         # Your code here
         results = await connector.search("your query", limit=10)
         print(f"Found {results['total_results']} results")
-        
+
     finally:
         await connector.close()
 
@@ -96,7 +125,7 @@ When adding new examples:
 
 1. **Import errors** - Make sure virtual environment is activated
 2. **Network errors** - Check internet connection and API availability
-3. **Rate limiting** - Add email configuration for better limits
+3. **Rate limiting** - Add email/API key configuration for better limits
 4. **Authentication** - Ensure proper API keys are configured
 
 ### Getting Help

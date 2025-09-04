@@ -52,7 +52,14 @@ def test_connector(
                     # Test search
                     click.echo(f"Searching {connector_name} v{version if version else 'latest'}...")
                     results = await connector.search(query, limit=limit)
-                    if results and "total_results" in results:
+                    if results and isinstance(results, list) and len(results) > 0:
+                        click.echo(f"Found {len(results)} results")
+                        for i, result in enumerate(results[:limit], 1):
+                            doc_id = result.get('id', 'Unknown ID')
+                            title = result.get('title', 'No title')
+                            click.echo(f"{i}. {doc_id}: {title}")
+                    elif results and isinstance(results, dict) and "total_results" in results:
+                        # Handle old format for backward compatibility
                         click.echo(f"Found {results['total_results']} results")
                         if "document_ids" in results:
                             for doc_id in results["document_ids"][:limit]:

@@ -10,6 +10,7 @@ Welcome to the OpenBioCure Connectors Core documentation. This directory contain
 
 ### Connector Documentation
 - **[OpenAlex Connector](connectors/openalex.md)** - Complete guide to the OpenAlex connector
+- **[PubMed Connector](connectors/pubmed.md)** - Complete guide to the PubMed connector
 
 ## Quick Navigation
 
@@ -29,8 +30,8 @@ Welcome to the OpenBioCure Connectors Core documentation. This directory contain
 
 ### PubMed Connector
 - **Purpose**: Access to biomedical literature via NCBI E-utilities API
-- **Features**: Search, document retrieval, metadata extraction
-- **Documentation**: See [connectors/pubmed/](../connectors/pubmed/)
+- **Features**: Search, document retrieval, metadata extraction, MeSH terms
+- **Documentation**: [PubMed Connector Guide](connectors/pubmed.md)
 
 ### OpenAlex Connector
 - **Purpose**: Access to comprehensive scholarly data

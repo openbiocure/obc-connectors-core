@@ -64,12 +64,12 @@ class YourConnector(BaseConnector):
 
         try:
             response = await self.make_request("search", params)
-            
+
             # Extract results
             documents = response.get("results", [])
             document_ids = [doc.get("id") for doc in documents]
             total_count = response.get("total", 0)
-            
+
             return {
                 "query": query,
                 "total_results": total_count,
@@ -89,7 +89,7 @@ class YourConnector(BaseConnector):
         """Get document by ID."""
         try:
             response = await self.make_request(f"documents/{doc_id}")
-            
+
             return {
                 "id": doc_id,
                 "title": response.get("title", "Untitled"),
@@ -238,7 +238,7 @@ from connectors.your_connector.connector import YourConnector
 async def test_search():
     connector = YourConnector()
     results = await connector.search("test query", limit=5)
-    
+
     assert "query" in results
     assert "total_results" in results
     assert "document_ids" in results
@@ -248,7 +248,7 @@ async def test_search():
 async def test_get_by_id():
     connector = YourConnector()
     doc = await connector.get_by_id("test_id")
-    
+
     assert "id" in doc
     assert doc["id"] == "test_id"
     assert "source" in doc
@@ -328,7 +328,7 @@ async def authenticate(self, config: Dict[str, Any]) -> None:
         self.api_key = config["api_key"]
         # Update headers or other auth mechanisms
         self.http_client.headers.update({"Authorization": f"Bearer {self.api_key}"})
-    
+
     if config.get("email"):
         self.email = config["email"]
         # Use email for better rate limits
@@ -343,23 +343,23 @@ async def search_with_pagination(self, query: str, limit: int = 100) -> Dict[str
     all_results = []
     page = 1
     per_page = min(limit, 100)  # API max per page
-    
+
     while len(all_results) < limit:
         params = {
             "q": query,
             "page": page,
             "per_page": per_page,
         }
-        
+
         response = await self.make_request("search", params)
         results = response.get("results", [])
-        
+
         if not results:
             break
-            
+
         all_results.extend(results)
         page += 1
-    
+
     return all_results[:limit]
 ```
 
@@ -373,15 +373,15 @@ class YourConnector(BaseConnector):
     def __init__(self):
         super().__init__(base_url="...", rate_limit=10)
         self._cache = {}
-    
+
     async def get_by_id(self, doc_id: str) -> Dict[str, Any]:
         # Check cache first
         if doc_id in self._cache:
             return self._cache[doc_id]
-        
+
         # Fetch from API
         result = await self._fetch_from_api(doc_id)
-        
+
         # Cache result
         self._cache[doc_id] = result
         return result
@@ -400,7 +400,7 @@ async def make_request_with_retry(self, endpoint: str, params: Dict[str, Any], m
         except Exception as e:
             if attempt == max_retries - 1:
                 raise e
-            
+
             # Exponential backoff
             wait_time = 2 ** attempt
             await asyncio.sleep(wait_time)
