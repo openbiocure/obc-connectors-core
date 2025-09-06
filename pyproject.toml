@@ -46,7 +46,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = [
     "unit: Unit tests",
-    "integration: Integration tests", 
+    "integration: Integration tests",
     "connector: Connector-specific tests",
     "slow: Slow running tests",
     "network: Tests that require network access",

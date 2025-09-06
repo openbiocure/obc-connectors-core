@@ -11,6 +11,36 @@ from tests.connectors.test_connector_base import ConnectorTestBase
 class TestOpenAlexConnector(ConnectorTestBase):
     """Test cases for OpenAlex Connector."""
 
+    def get_connector_class(self):
+        """Return the connector class to test."""
+        return OpenAlexConnector
+
+    def get_connector_name(self):
+        """Return the connector name."""
+        return "openalex"
+
+    def get_valid_queries(self):
+        """Return list of valid test queries."""
+        return ["early stage cancer", "oncology", "cancer treatment"]
+
+    def get_valid_doc_ids(self):
+        """Return list of valid document IDs for testing."""
+        return ["W1234567890", "W2755950973"]
+
+    def get_expected_capabilities(self):
+        """Return expected capabilities for this connector."""
+        return {
+            "supports_document_content": True,
+            "supports_json_content": True,
+            "supports_advanced_search": True,
+            "supports_date_filtering": True,
+            "requires_authentication": False,
+            "supports_native_pagination": True,
+            "supports_fulltext": True,
+            "supports_string_content": True,
+            "supports_binary_content": False
+        }
+
     def create_connector(self):
         """Create OpenAlex connector instance."""
         return OpenAlexConnector()
@@ -62,35 +92,46 @@ class TestOpenAlexConnector(ConnectorTestBase):
         assert connector.email == "test@example.com"
 
     @pytest.mark.asyncio
-    async def test_search_method(self):
-        """Test OpenAlex search method."""
+    async def test_openalex_search_method_with_mock(self):
+        """Test OpenAlex search method with mocked response."""
         connector = self.create_connector()
 
-        with patch.object(connector, 'make_request', return_value={
-            "results": [
-                {
-                    "id": "https://openalex.org/W1234567890",
-                    "title": "Test Paper",
-                    "abstract_inverted_index": {"test": [0], "paper": [1]},
-                    "authorships": [{"author": {"display_name": "Test Author"}}],
-                    "publication_date": "2023-01-01",
-                    "doi": "https://doi.org/10.1000/test",
-                    "type": "journal-article",
-                    "language": "en",
-                    "open_access": {"is_oa": True, "oa_url": "https://example.com/paper"},
-                    "cited_by_count": 5,
-                    "concepts": [{"display_name": "Machine Learning", "score": 0.8}]
+        # Mock make_request to return 1 result first, then empty results
+        def mock_make_request(*args, **kwargs):
+            if not hasattr(mock_make_request, 'call_count'):
+                mock_make_request.call_count = 0
+            mock_make_request.call_count += 1
+            
+            if mock_make_request.call_count == 1:
+                return {
+                    "results": [
+                        {
+                            "id": "https://openalex.org/W1234567890",
+                            "title": "Test Paper",
+                            "abstract_inverted_index": {"test": [0], "paper": [1]},
+                            "authorships": [{"author": {"display_name": "Test Author"}}],
+                            "publication_date": "2023-01-01",
+                            "doi": "https://doi.org/10.1000/test",
+                            "type": "journal-article",
+                            "language": "en",
+                            "open_access": {"is_oa": True, "oa_url": "https://example.com/paper"},
+                            "cited_by_count": 5,
+                            "concepts": [{"display_name": "Early stage cancer", "score": 0.8}]
+                        }
+                    ]
                 }
-            ]
-        }):
-            result = await connector.search("machine learning", limit=10)
+            else:
+                return {"results": []}
+
+        with patch.object(connector, 'make_request', side_effect=mock_make_request):
+            result = await connector.search("early stage cancer", limit=10)
 
             assert isinstance(result, dict)
             assert "query" in result
             assert "total_results" in result
             assert "document_ids" in result
             assert "metadata" in result
-            assert result["query"] == "machine learning"
+            assert result["query"] == "early stage cancer"
             assert result["total_results"] == 1
             assert len(result["document_ids"]) == 1
 
@@ -110,7 +151,7 @@ class TestOpenAlexConnector(ConnectorTestBase):
             "language": "en",
             "open_access": {"is_oa": True, "oa_url": "https://example.com/paper"},
             "cited_by_count": 5,
-            "concepts": [{"display_name": "Machine Learning", "score": 0.8}]
+            "concepts": [{"display_name": "Early stage cancer", "score": 0.8}]
         }):
             result = await connector.get_by_id("W1234567890")
 
@@ -218,7 +259,7 @@ class TestOpenAlexConnector(ConnectorTestBase):
         connector = self.create_connector()
 
         try:
-            result = await connector.search("machine learning", limit=5)
+            result = await connector.search("early stage cancer", limit=5)
             assert isinstance(result, dict)
             assert "query" in result
             assert "total_results" in result
@@ -259,7 +300,7 @@ class TestOpenAlexConnector(ConnectorTestBase):
                     "language": "en",
                     "open_access": {"is_oa": True, "oa_url": "https://example.com/paper"},
                     "cited_by_count": 5,
-                    "concepts": [{"display_name": "Machine Learning", "score": 0.8}]
+                    "concepts": [{"display_name": "Early stage cancer", "score": 0.8}]
                 }
             ]
         }
@@ -287,7 +328,7 @@ class TestOpenAlexConnector(ConnectorTestBase):
             "language": "en",
             "open_access": {"is_oa": True, "oa_url": "https://example.com/paper"},
             "cited_by_count": 5,
-            "concepts": [{"display_name": "Machine Learning", "score": 0.8}]
+            "concepts": [{"display_name": "Early stage cancer", "score": 0.8}]
         }
 
         with patch.object(connector, 'make_request', return_value=mock_response):
@@ -368,7 +409,7 @@ class TestOpenAlexConnector(ConnectorTestBase):
             "concepts": [
                 {
                     "id": "https://openalex.org/C1234567890",
-                    "display_name": "Machine Learning",
+                    "display_name": "Early stage cancer",
                     "score": 0.8,
                     "level": 2
                 }
@@ -377,7 +418,7 @@ class TestOpenAlexConnector(ConnectorTestBase):
 
         concepts = connector._extract_concepts(work_data)
         assert len(concepts) == 1
-        assert concepts[0]["display_name"] == "Machine Learning"
+        assert concepts[0]["display_name"] == "Early stage cancer"
         assert concepts[0]["score"] == 0.8
         assert concepts[0]["level"] == 2
 
@@ -387,17 +428,17 @@ class TestOpenAlexConnector(ConnectorTestBase):
 
         work_data = {
             "concepts": [
-                {"display_name": "Machine Learning"},
-                {"display_name": "Artificial Intelligence"},
-                {"display_name": "Deep Learning"}
+                {"display_name": "Early stage cancer"},
+                {"display_name": "Oncology"},
+                {"display_name": "Cancer treatment"}
             ]
         }
 
         keywords = connector._extract_keywords(work_data)
         assert len(keywords) == 3
-        assert "Machine Learning" in keywords
-        assert "Artificial Intelligence" in keywords
-        assert "Deep Learning" in keywords
+        assert "Early stage cancer" in keywords
+        assert "Oncology" in keywords
+        assert "Cancer treatment" in keywords
 
     @pytest.mark.asyncio
     async def test_openalex_search_by_author(self):
