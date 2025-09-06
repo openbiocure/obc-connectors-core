@@ -16,7 +16,7 @@ class TestAuthor:
             email="john@example.com",
             affiliation="Test University"
         )
-        
+
         assert author.name == "John Doe"
         assert author.orcid == "0000-0000-0000-0000"
         assert author.email == "john@example.com"
@@ -25,7 +25,7 @@ class TestAuthor:
     def test_author_minimal(self):
         """Test author creation with minimal data."""
         author = Author(name="Jane Smith")
-        
+
         assert author.name == "Jane Smith"
         assert author.orcid is None
         assert author.email is None
@@ -37,7 +37,7 @@ class TestAuthor:
             name="Bob Wilson",
             orcid="0000-0000-0000-0001"
         )
-        
+
         assert author.name == "Bob Wilson"
         assert author.orcid == "0000-0000-0000-0001"
         assert author.email is None
@@ -54,7 +54,7 @@ class TestDocument:
             source="test_connector",
             title="Test Document"
         )
-        
+
         assert doc.id == "doc123"
         assert doc.source == "test_connector"
         assert doc.title == "Test Document"
@@ -76,7 +76,7 @@ class TestDocument:
             Author(name="Author One"),
             Author(name="Author Two")
         ]
-        
+
         doc = Document(
             id="doc456",
             source="test_connector",
@@ -92,7 +92,7 @@ class TestDocument:
             content={"raw": "data"},
             metadata={"key": "value"}
         )
-        
+
         assert doc.id == "doc456"
         assert doc.source == "test_connector"
         assert doc.title == "Complete Test Document"
@@ -116,7 +116,7 @@ class TestDocument:
             source="test_connector",
             title="Default Test Document"
         )
-        
+
         assert doc.document_type == "article"
         assert doc.authors == []
         assert doc.keywords == []
@@ -130,7 +130,7 @@ class TestDocument:
             title="String Content Document",
             content="This is string content"
         )
-        
+
         assert doc.content == "This is string content"
 
     def test_document_with_dict_content(self):
@@ -142,7 +142,7 @@ class TestDocument:
             title="Dict Content Document",
             content=content_dict
         )
-        
+
         assert doc.content == content_dict
 
     def test_document_with_bytes_content(self):
@@ -154,5 +154,5 @@ class TestDocument:
             title="Bytes Content Document",
             content=content_bytes
         )
-        
+
         assert doc.content == content_bytes

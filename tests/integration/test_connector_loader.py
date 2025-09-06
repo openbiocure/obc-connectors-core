@@ -17,7 +17,7 @@ class TestConnectorLoader:
         # Create a mock connector directory
         connector_dir = temp_dir / "connectors" / "test_connector"
         connector_dir.mkdir(parents=True)
-        
+
         # Create connector.yaml
         yaml_content = """
 name: test_connector
@@ -28,7 +28,7 @@ api:
   base_url: https://api.test.com/
 """
         (connector_dir / "connector.yaml").write_text(yaml_content)
-        
+
         # Mock the search paths to include our temp directory
         with patch.object(ConnectorLoader, '_get_search_paths', return_value=[str(temp_dir)]):
             result = ConnectorLoader.find_connector_dir("test_connector")
@@ -44,7 +44,7 @@ api:
         """Test loading a valid YAML specification."""
         connector_dir = temp_dir / "test_connector"
         connector_dir.mkdir()
-        
+
         yaml_content = """
 name: test_connector
 display_name: Test Connector
@@ -59,9 +59,9 @@ api:
     requests_per_second: 10
 """
         (connector_dir / "connector.yaml").write_text(yaml_content)
-        
+
         spec = ConnectorLoader.load_yaml_spec(str(connector_dir))
-        
+
         assert spec["name"] == "test_connector"
         assert spec["display_name"] == "Test Connector"
         assert spec["description"] == "A test connector"
@@ -74,7 +74,7 @@ api:
         """Test loading YAML spec from non-existent file."""
         connector_dir = temp_dir / "test_connector"
         connector_dir.mkdir()
-        
+
         with pytest.raises(ConnectorError, match="connector.yaml not found"):
             ConnectorLoader.load_yaml_spec(str(connector_dir))
 
@@ -82,7 +82,7 @@ api:
         """Test loading invalid YAML specification."""
         connector_dir = temp_dir / "test_connector"
         connector_dir.mkdir()
-        
+
         # Invalid YAML content
         yaml_content = """
 name: test_connector
@@ -90,7 +90,7 @@ version: 1.0.0
 invalid: [unclosed list
 """
         (connector_dir / "connector.yaml").write_text(yaml_content)
-        
+
         with pytest.raises(ConnectorError, match="Error loading connector.yaml"):
             ConnectorLoader.load_yaml_spec(str(connector_dir))
 
@@ -98,14 +98,14 @@ invalid: [unclosed list
         """Test loading YAML spec missing required name field."""
         connector_dir = temp_dir / "test_connector"
         connector_dir.mkdir()
-        
+
         yaml_content = """
 version: 1.0.0
 capabilities:
   supports_document_content: true
 """
         (connector_dir / "connector.yaml").write_text(yaml_content)
-        
+
         with pytest.raises(ConnectorError, match="Invalid connector.yaml: 'name' field missing"):
             ConnectorLoader.load_yaml_spec(str(connector_dir))
 
@@ -113,7 +113,7 @@ capabilities:
         """Test getting version from YAML file."""
         connector_dir = temp_dir / "test_connector"
         connector_dir.mkdir()
-        
+
         yaml_content = """
 name: test_connector
 version: 2.1.3
@@ -121,7 +121,7 @@ capabilities:
   supports_document_content: true
 """
         (connector_dir / "connector.yaml").write_text(yaml_content)
-        
+
         version = ConnectorLoader._get_yaml_version(str(connector_dir))
         assert version == "2.1.3"
 
@@ -129,14 +129,14 @@ capabilities:
         """Test getting version from YAML file missing version field."""
         connector_dir = temp_dir / "test_connector"
         connector_dir.mkdir()
-        
+
         yaml_content = """
 name: test_connector
 capabilities:
   supports_document_content: true
 """
         (connector_dir / "connector.yaml").write_text(yaml_content)
-        
+
         with pytest.raises(ConnectorError, match="Version not specified"):
             ConnectorLoader._get_yaml_version(str(connector_dir))
 
@@ -152,7 +152,7 @@ capabilities:
         # In practice, this would test the actual connector loading
         connector_dir = temp_dir / "connectors" / "test_connector"
         connector_dir.mkdir(parents=True)
-        
+
         yaml_content = """
 name: test_connector
 version: 1.0.0
@@ -160,7 +160,7 @@ capabilities:
   supports_document_content: true
 """
         (connector_dir / "connector.yaml").write_text(yaml_content)
-        
+
         # Test that the directory and YAML are found
         with patch.object(ConnectorLoader, 'find_connector_dir', return_value=str(connector_dir)):
             with patch.object(ConnectorLoader, 'load_yaml_spec', return_value={"name": "test_connector"}):
@@ -174,7 +174,7 @@ capabilities:
         # In practice, this would test error handling
         connector_dir = temp_dir / "connectors" / "test_connector"
         connector_dir.mkdir(parents=True)
-        
+
         yaml_content = """
 name: test_connector
 version: 1.0.0
@@ -182,7 +182,7 @@ capabilities:
   supports_document_content: true
 """
         (connector_dir / "connector.yaml").write_text(yaml_content)
-        
+
         # Test that the directory and YAML are found
         with patch.object(ConnectorLoader, 'find_connector_dir', return_value=str(connector_dir)):
             with patch.object(ConnectorLoader, 'load_yaml_spec', return_value={"name": "test_connector"}):
@@ -197,7 +197,7 @@ capabilities:
         # In practice, this would test the context manager
         connector_dir = temp_dir / "connectors" / "test_connector"
         connector_dir.mkdir(parents=True)
-        
+
         yaml_content = """
 name: test_connector
 version: 1.0.0
@@ -205,7 +205,7 @@ capabilities:
   supports_document_content: true
 """
         (connector_dir / "connector.yaml").write_text(yaml_content)
-        
+
         # Test that the setup works
         assert True
 
@@ -214,7 +214,7 @@ capabilities:
         """Test managed connector with version mismatch."""
         connector_dir = temp_dir / "connectors" / "test_connector"
         connector_dir.mkdir(parents=True)
-        
+
         yaml_content = """
 name: test_connector
 version: 1.0.0
@@ -222,7 +222,7 @@ capabilities:
   supports_document_content: true
 """
         (connector_dir / "connector.yaml").write_text(yaml_content)
-        
+
         with patch.object(ConnectorLoader, 'load_connector_class', return_value=MagicMock()):
             with patch.object(ConnectorLoader, 'find_connector_dir', return_value=str(connector_dir)):
                 with patch.object(ConnectorLoader, '_get_yaml_version', return_value="2.0.0"):

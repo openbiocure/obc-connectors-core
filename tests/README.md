@@ -144,21 +144,21 @@ Shared fixtures and configuration:
    ```python
    # tests/connectors/test_your_connector.py
    from tests.connectors.test_connector_base import ConnectorTestBase
-   
+
    class TestYourConnector(ConnectorTestBase):
        def get_connector_class(self):
            from connectors.your_connector.connector import YourConnector
            return YourConnector
-       
+
        def get_connector_name(self):
            return "your_connector"
-       
+
        def get_valid_queries(self):
            return ["test query 1", "test query 2"]
-       
+
        def get_valid_doc_ids(self):
            return ["doc1", "doc2"]
-       
+
        def get_expected_capabilities(self):
            return {
                "supports_document_content": True,
@@ -183,7 +183,7 @@ Shared fixtures and configuration:
    # tests/unit/test_your_component.py
    import pytest
    from obc_connector_sdk.your_component import YourComponent
-   
+
    class TestYourComponent:
        def test_basic_functionality(self):
            """Test basic functionality."""
@@ -195,7 +195,7 @@ Shared fixtures and configuration:
    ```python
    # tests/integration/test_your_component_integration.py
    import pytest
-   
+
    class TestYourComponentIntegration:
        @pytest.mark.asyncio
        async def test_component_interaction(self):

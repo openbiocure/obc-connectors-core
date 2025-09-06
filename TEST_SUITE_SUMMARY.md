@@ -246,6 +246,6 @@ For questions or issues, please refer to the main project documentation or creat
 
 ---
 
-**Last Updated**: September 6, 2025  
-**Test Suite Version**: 1.0.0  
+**Last Updated**: September 6, 2025
+**Test Suite Version**: 1.0.0
 **Maintainer**: OpenBioCure Team

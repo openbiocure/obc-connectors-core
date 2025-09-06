@@ -63,7 +63,7 @@ class ConnectorTestBase(ABC):
         connector = self.create_connector()
         capabilities = connector.capabilities
         expected_capabilities = self.get_expected_capabilities()
-        
+
         for capability, expected_value in expected_capabilities.items():
             assert capabilities.get(capability) == expected_value
 
@@ -115,7 +115,7 @@ class ConnectorTestBase(ABC):
         """Test search with valid queries."""
         connector = self.create_connector()
         valid_queries = self.get_valid_queries()
-        
+
         for query in valid_queries:
             try:
                 result = await connector.search(query, limit=5)
@@ -134,7 +134,7 @@ class ConnectorTestBase(ABC):
         """Test get_by_id with valid document IDs."""
         connector = self.create_connector()
         valid_doc_ids = self.get_valid_doc_ids()
-        
+
         for doc_id in valid_doc_ids:
             try:
                 result = await connector.get_by_id(doc_id)
@@ -148,11 +148,11 @@ class ConnectorTestBase(ABC):
     async def test_search_with_invalid_query(self):
         """Test search with invalid query."""
         connector = self.create_connector()
-        
+
         # Test with empty query
         with pytest.raises(Exception):
             await connector.search("", limit=5)
-        
+
         # Test with None query
         with pytest.raises(Exception):
             await connector.search(None, limit=5)
@@ -161,11 +161,11 @@ class ConnectorTestBase(ABC):
     async def test_get_by_id_with_invalid_id(self):
         """Test get_by_id with invalid document ID."""
         connector = self.create_connector()
-        
+
         # Test with empty ID
         with pytest.raises(Exception):
             await connector.get_by_id("")
-        
+
         # Test with None ID
         with pytest.raises(Exception):
             await connector.get_by_id(None)
@@ -174,7 +174,7 @@ class ConnectorTestBase(ABC):
     async def test_search_with_negative_limit(self):
         """Test search with negative limit."""
         connector = self.create_connector()
-        
+
         with pytest.raises(Exception):
             await connector.search("test query", limit=-1)
 
@@ -182,7 +182,7 @@ class ConnectorTestBase(ABC):
     async def test_search_with_zero_limit(self):
         """Test search with zero limit."""
         connector = self.create_connector()
-        
+
         result = await connector.search("test query", limit=0)
         assert isinstance(result, dict)
         assert result["total_results"] >= 0
@@ -193,7 +193,7 @@ class ConnectorTestBase(ABC):
         """Test authenticate with configuration."""
         connector = self.create_connector()
         config = {"api_key": "test_key", "base_url": "https://api.test.com"}
-        
+
         # Should not raise an exception
         await connector.authenticate(config)
 
@@ -201,7 +201,7 @@ class ConnectorTestBase(ABC):
     async def test_install_and_uninstall(self):
         """Test install and uninstall methods."""
         connector = self.create_connector()
-        
+
         # Should not raise exceptions
         await connector.install()
         await connector.uninstall()
@@ -210,17 +210,17 @@ class ConnectorTestBase(ABC):
     async def test_get_updates_with_date(self):
         """Test get_updates with date parameter."""
         from datetime import datetime, timedelta
-        
+
         connector = self.create_connector()
         since_date = datetime.now() - timedelta(days=30)
-        
+
         try:
             updates = []
             async for update in connector.get_updates(since_date):
                 updates.append(update)
                 if len(updates) >= 5:  # Limit for testing
                     break
-            
+
             # Should not raise an exception
             assert isinstance(updates, list)
         except Exception as e:
@@ -231,7 +231,7 @@ class ConnectorTestBase(ABC):
     async def test_connector_context_manager(self):
         """Test connector as context manager."""
         connector = self.create_connector()
-        
+
         # Test __enter__ and __exit__
         with connector:
             assert connector is not None
@@ -240,7 +240,7 @@ class ConnectorTestBase(ABC):
     async def test_connector_close(self):
         """Test connector close method."""
         connector = self.create_connector()
-        
+
         # Should not raise an exception
         await connector.close()
 
@@ -249,23 +249,23 @@ class ConnectorTestBase(ABC):
         """Test that search results have expected structure."""
         connector = self.create_connector()
         valid_queries = self.get_valid_queries()
-        
+
         if not valid_queries:
             pytest.skip("No valid queries available for testing")
-        
+
         query = valid_queries[0]
         result = await connector.search(query, limit=5)
-        
+
         # Check required fields
         required_fields = ["query", "total_results", "document_ids"]
         for field in required_fields:
             assert field in result, f"Missing required field: {field}"
-        
+
         # Check data types
         assert isinstance(result["query"], str)
         assert isinstance(result["total_results"], int)
         assert isinstance(result["document_ids"], list)
-        
+
         # Check that query matches input
         assert result["query"] == query
 
@@ -274,21 +274,21 @@ class ConnectorTestBase(ABC):
         """Test that document results have expected structure."""
         connector = self.create_connector()
         valid_doc_ids = self.get_valid_doc_ids()
-        
+
         if not valid_doc_ids:
             pytest.skip("No valid document IDs available for testing")
-        
+
         doc_id = valid_doc_ids[0]
         result = await connector.get_by_id(doc_id)
-        
+
         # Check required fields
         required_fields = ["id", "source"]
         for field in required_fields:
             assert field in result, f"Missing required field: {field}"
-        
+
         # Check data types
         assert isinstance(result["id"], str)
         assert isinstance(result["source"], str)
-        
+
         # Check that ID matches input
         assert result["id"] == doc_id

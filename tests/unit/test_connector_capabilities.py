@@ -22,7 +22,7 @@ class TestConnectorCapability:
         """Test to_dict with empty capabilities set."""
         capabilities = set()
         result = ConnectorCapability.to_dict(capabilities)
-        
+
         # All capabilities should be False
         for capability in ConnectorCapability:
             assert result[capability.value] is False
@@ -31,7 +31,7 @@ class TestConnectorCapability:
         """Test to_dict with single capability."""
         capabilities = {ConnectorCapability.SUPPORTS_FULLTEXT}
         result = ConnectorCapability.to_dict(capabilities)
-        
+
         assert result["supports_fulltext"] is True
         assert result["supports_document_content"] is False
         assert result["supports_json_content"] is False
@@ -45,7 +45,7 @@ class TestConnectorCapability:
             ConnectorCapability.REQUIRES_AUTHENTICATION
         }
         result = ConnectorCapability.to_dict(capabilities)
-        
+
         assert result["supports_document_content"] is True
         assert result["supports_advanced_search"] is True
         assert result["requires_authentication"] is True
@@ -57,19 +57,19 @@ class TestConnectorCapability:
         # Test with document content
         capabilities = {ConnectorCapability.SUPPORTS_DOCUMENT_CONTENT}
         assert ConnectorCapability.validate_content_type_capability(capabilities) is True
-        
+
         # Test with JSON content
         capabilities = {ConnectorCapability.SUPPORTS_JSON_CONTENT}
         assert ConnectorCapability.validate_content_type_capability(capabilities) is True
-        
+
         # Test with string content
         capabilities = {ConnectorCapability.SUPPORTS_STRING_CONTENT}
         assert ConnectorCapability.validate_content_type_capability(capabilities) is True
-        
+
         # Test with binary content
         capabilities = {ConnectorCapability.SUPPORTS_BINARY_CONTENT}
         assert ConnectorCapability.validate_content_type_capability(capabilities) is True
-        
+
         # Test with multiple content types
         capabilities = {
             ConnectorCapability.SUPPORTS_DOCUMENT_CONTENT,
@@ -82,11 +82,11 @@ class TestConnectorCapability:
         # Test with no content type capabilities
         capabilities = {ConnectorCapability.SUPPORTS_FULLTEXT}
         assert ConnectorCapability.validate_content_type_capability(capabilities) is False
-        
+
         # Test with empty set
         capabilities = set()
         assert ConnectorCapability.validate_content_type_capability(capabilities) is False
-        
+
         # Test with only non-content capabilities
         capabilities = {
             ConnectorCapability.SUPPORTS_ADVANCED_SEARCH,
@@ -98,10 +98,10 @@ class TestConnectorCapability:
         """Test that to_dict covers all capabilities."""
         capabilities = set(ConnectorCapability)
         result = ConnectorCapability.to_dict(capabilities)
-        
+
         # Should have an entry for every capability
         assert len(result) == len(ConnectorCapability)
-        
+
         # All should be True
         for capability in ConnectorCapability:
             assert result[capability.value] is True
@@ -114,7 +114,7 @@ class TestConnectorCapability:
             ConnectorCapability.SUPPORTS_STRING_CONTENT,
             ConnectorCapability.SUPPORTS_BINARY_CONTENT
         }
-        
+
         # Test that each content type capability validates correctly
         for cap in content_type_caps:
             assert ConnectorCapability.validate_content_type_capability({cap}) is True
