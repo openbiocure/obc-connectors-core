@@ -1,0 +1,67 @@
+name: openalex
+display_name: OpenAlex
+description: Connects to the OpenAlex API for academic literature and research data
+version: 1.0.0
+
+capabilities:
+  supports_fulltext: true
+  supports_advanced_search: true
+  supports_date_filtering: true
+  requires_authentication: false
+  supports_native_pagination: true
+  supports_document_content: true
+  supports_json_content: true
+  supports_author_search: true
+  supports_institution_search: true
+  supports_citation_network: true
+  supports_incremental_updates: true
+
+api:
+  base_url: https://api.openalex.org/
+  rate_limit:
+    requests_per_second: 10
+    daily_limit: 100000
+  endpoints:
+    works:
+      path: "works"
+      method: "GET"
+      params: {}
+      response:
+        mapping:
+          id: "id"
+          title: "title"
+          abstract: "abstract_inverted_index"
+          authors: "authorships"
+          publication_date: "publication_date"
+          doi: "doi"
+    authors:
+      path: "authors"
+      method: "GET"
+      params: {}
+      response:
+        mapping:
+          id: "id"
+          name: "display_name"
+          orcid: "orcid"
+    institutions:
+      path: "institutions"
+      method: "GET"
+      params: {}
+      response:
+        mapping:
+          id: "id"
+          name: "display_name"
+          country: "country_code"
+
+configuration:
+  properties:
+    - name: email
+      type: string
+      required: false
+      description: Email address for better rate limits (recommended)
+      sensitive: false
+    - name: batch_size
+      type: integer
+      required: false
+      default: 200
+      description: Number of items to retrieve in each batch (max 200)
