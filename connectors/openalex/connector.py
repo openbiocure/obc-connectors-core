@@ -2,15 +2,16 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, AsyncIterator
 from urllib.parse import quote
 
 from obc_connector_sdk.base_connector import BaseConnector
+from obc_connector_sdk.i_connector import IConnector, ConnectorCapability
 
 logger = logging.getLogger(__name__)
 
 
-class OpenAlexConnector(BaseConnector):
+class OpenAlexConnector(BaseConnector, IConnector):
     """OpenAlex connector for academic literature and research data."""
 
     def __init__(self):
@@ -20,11 +21,55 @@ class OpenAlexConnector(BaseConnector):
         )
         self.email = None  # Optional email for better rate limits
 
-    async def search(self, query: str, limit: int = 100) -> List[Dict[str, Any]]:
+    @property
+    def name(self) -> str:
+        """Get the connector name."""
+        return "openalex"
+
+    @property
+    def capabilities(self) -> Dict[str, bool]:
+        """Get the connector capabilities."""
+        return {
+            "supports_document_content": True,
+            "supports_json_content": True,
+            "supports_advanced_search": True,
+            "supports_date_filtering": True,
+            "requires_authentication": False,
+            "supports_native_pagination": True,
+            "supports_fulltext": True,
+            "supports_string_content": True,
+            "supports_binary_content": False
+        }
+
+    async def install(self) -> None:
+        """Install connector dependencies or set up resources."""
+        # OpenAlex doesn't require special installation
+        logger.info("OpenAlex connector installed successfully")
+
+    async def uninstall(self) -> None:
+        """Clean up connector resources."""
+        # Close HTTP client if it exists
+        if hasattr(self, '_http_client') and self._http_client:
+            await self._http_client.close()
+        logger.info("OpenAlex connector uninstalled successfully")
+
+    async def __aenter__(self):
+        """Async context manager entry."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit."""
+        await self.close()
+
+    async def search(self, query: str, limit: Optional[int] = None) -> Dict[str, Any]:
 
         """Search OpenAlex for works (papers)."""
         # URL encode the query
         encoded_query = quote(query)
+
+        # Set default limit if None
+        if limit is None:
+            limit = 100
 
         all_works: List[Dict[str, Any]] = []
         page = 1
@@ -87,11 +132,21 @@ class OpenAlexConnector(BaseConnector):
                     logger.warning(f"Reached maximum page limit for query: {query}")
                     break
 
-            return all_works
+            return {
+                "query": query,
+                "total_results": len(all_works),
+                "document_ids": [work["id"] for work in all_works],
+                "metadata": {"source": "openalex", "email": self.email is not None}
+            }
 
         except Exception as e:
             logger.error(f"OpenAlex search failed: {e}")
-            return []
+            return {
+                "query": query,
+                "total_results": 0,
+                "document_ids": [],
+                "metadata": {"source": "openalex", "error": str(e)}
+            }
 
     async def get_by_id(self, doc_id: str) -> Dict[str, Any]:
         """Get a work by OpenAlex ID."""
@@ -250,14 +305,23 @@ class OpenAlexConnector(BaseConnector):
             # Some users might pass api_key thinking it's required
             logger.info("OpenAlex connector doesn't require API key, but email is recommended")
 
-    async def get_updates(self, since: datetime) -> List[Dict[str, Any]]:
+    async def get_updates(self, since: datetime) -> AsyncIterator[Dict[str, Any]]:
         """Get updates since a specific date."""
         # Convert date to OpenAlex format (YYYY-MM-DD)
         date_str = since.strftime("%Y-%m-%d")
 
         # Search for works published since the date
         query = f"from_publication_date:{date_str}"
-        return await self.search(query, limit=1000)
+        search_result = await self.search(query, limit=1000)
+
+        # Yield each document ID as a separate update
+        for doc_id in search_result.get("document_ids", []):
+            yield {
+                "id": doc_id,
+                "query": query,
+                "source": "openalex",
+                "metadata": search_result.get("metadata", {})
+            }
 
     async def search_by_author(self, author_name: str, limit: int = 100) -> List[Dict[str, Any]]:
         """Search for works by a specific author."""

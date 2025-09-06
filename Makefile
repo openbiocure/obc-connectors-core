@@ -149,8 +149,20 @@ test-integration:
 test-connectors:
 	$(PYTEST) $(PYTEST_ARGS) $(CONNECTOR_TEST_DIR)
 
+test-smoke:
+	$(PYTEST) $(PYTEST_ARGS) -m smoke $(TEST_DIR)
+
+test-regression:
+	$(PYTEST) $(PYTEST_ARGS) -m regression $(TEST_DIR)
+
+test-no-network:
+	$(PYTEST) $(PYTEST_ARGS) -m "not network" $(TEST_DIR)
+
+test-runner:
+	python $(TEST_DIR)/test_runner.py
+
 coverage:
-	$(PYTEST) $(PYTEST_ARGS) --cov=obc_ingestion --cov-report=term --cov-report=html $(TEST_DIR)
+	$(PYTEST) $(PYTEST_ARGS) --cov=obc_connector_sdk --cov=obc_ingestion --cov-report=term --cov-report=html $(TEST_DIR)
 	@echo "Coverage report available at htmlcov/index.html"
 
 format:
