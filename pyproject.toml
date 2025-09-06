@@ -24,3 +24,33 @@ allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = [ "obc_connector_sdk", "obc_ingestion", "connectors" ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--disable-warnings",
+    "--cov=obc_connector_sdk",
+    "--cov=obc_ingestion",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-report=xml:coverage.xml",
+    "--cov-fail-under=80"
+]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests", 
+    "connector: Connector-specific tests",
+    "slow: Slow running tests",
+    "network: Tests that require network access",
+    "mock: Tests that use mocking",
+    "regression: Regression tests",
+    "smoke: Smoke tests for basic functionality"
+]

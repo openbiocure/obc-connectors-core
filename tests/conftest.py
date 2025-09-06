@@ -13,12 +13,7 @@ from obc_connector_sdk.models import Document, Author
 from obc_connector_sdk.connector_capabilities import ConnectorCapability
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+# Removed custom event_loop fixture - using pytest-asyncio default
 
 
 @pytest.fixture

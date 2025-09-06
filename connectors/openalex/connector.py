@@ -66,7 +66,7 @@ class OpenAlexConnector(BaseConnector, IConnector):
         """Search OpenAlex for works (papers)."""
         # URL encode the query
         encoded_query = quote(query)
-        
+
         # Set default limit if None
         if limit is None:
             limit = 100
@@ -313,7 +313,7 @@ class OpenAlexConnector(BaseConnector, IConnector):
         # Search for works published since the date
         query = f"from_publication_date:{date_str}"
         search_result = await self.search(query, limit=1000)
-        
+
         # Yield each document ID as a separate update
         for doc_id in search_result.get("document_ids", []):
             yield {
