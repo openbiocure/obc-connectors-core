@@ -35,7 +35,7 @@ class TestOpenAlexConnectorSimple:
                     "language": "en",
                     "open_access": {"is_oa": True, "oa_url": "https://example.com/paper"},
                     "cited_by_count": 5,
-                    "concepts": [{"display_name": "Machine Learning", "score": 0.8}]
+                    "concepts": [{"display_name": "Early stage cancer", "score": 0.8}]
                 }
             ]
         }
@@ -260,7 +260,7 @@ class TestOpenAlexConnectorSimple:
         connector = OpenAlexConnector()
 
         try:
-            result = await connector.search("machine learning", limit=5)
+            result = await connector.search("cancer", limit=5)
             assert isinstance(result, dict)
             assert "query" in result
             assert "total_results" in result

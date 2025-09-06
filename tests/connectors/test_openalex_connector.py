@@ -101,7 +101,7 @@ class TestOpenAlexConnector(ConnectorTestBase):
             if not hasattr(mock_make_request, 'call_count'):
                 mock_make_request.call_count = 0
             mock_make_request.call_count += 1
-            
+
             if mock_make_request.call_count == 1:
                 return {
                     "results": [
@@ -259,7 +259,7 @@ class TestOpenAlexConnector(ConnectorTestBase):
         connector = self.create_connector()
 
         try:
-            result = await connector.search("early stage cancer", limit=5)
+            result = await connector.search("cancer", limit=5)
             assert isinstance(result, dict)
             assert "query" in result
             assert "total_results" in result
