@@ -16,8 +16,15 @@ class BaseConnector(ABC):
     def __init__(self, base_url: str, rate_limit: int = 10):
         self.base_url = base_url
         self.rate_limit = rate_limit
-        self.http_client = aiohttp.ClientSession()
+        self._http_client = None
         self.logger = logging.getLogger(self.__class__.__name__)
+
+    @property
+    def http_client(self):
+        """Lazy initialization of HTTP client."""
+        if self._http_client is None:
+            self._http_client = aiohttp.ClientSession()
+        return self._http_client
 
     async def make_request(self, endpoint: str, params: Dict[str, Any]) -> Dict[str, Any]:
         """Make HTTP request with rate limiting."""
@@ -65,7 +72,9 @@ class BaseConnector(ABC):
 
     async def close(self):
         """Close HTTP client."""
-        await self.http_client.close()
+        if self._http_client is not None:
+            await self._http_client.close()
+            self._http_client = None
 
     def __enter__(self):
         return self

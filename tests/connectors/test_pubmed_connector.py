@@ -201,10 +201,10 @@ class TestPubMedConnector(ConnectorTestBase):
     async def test_pubmed_get_updates(self):
         """Test PubMed get_updates method."""
         from datetime import datetime, timedelta
-        
+
         connector = self.create_connector()
         since_date = datetime.now() - timedelta(days=30)
-        
+
         # Mock the search method to return test data
         with patch.object(connector, 'search', return_value={
             "query": "test",
@@ -217,7 +217,7 @@ class TestPubMedConnector(ConnectorTestBase):
                 updates.append(update)
                 if len(updates) >= 2:
                     break
-            
+
             assert len(updates) == 2
             # Check that the update has the expected structure
             assert "id" in updates[0]
@@ -285,15 +285,15 @@ class TestPubMedConnector(ConnectorTestBase):
     async def test_pubmed_get_by_id_parameters(self):
         """Test PubMed get_by_id parameters."""
         connector = self.create_connector()
-        
+
         with patch.object(connector.http_client, 'get') as mock_get:
             mock_response = MagicMock()
             mock_response.raise_for_status.return_value = None
             mock_response.text = AsyncMock(return_value="<xml>test</xml>")
             mock_get.return_value.__aenter__.return_value = mock_response
-            
+
             await connector.get_by_id("12345")
-            
+
             # Check that get was called with correct parameters
             mock_get.assert_called_once()
             call_args = mock_get.call_args

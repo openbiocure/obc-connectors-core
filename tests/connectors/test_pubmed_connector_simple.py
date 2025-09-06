@@ -109,8 +109,8 @@ class TestPubMedConnectorSimple:
 
         authors = connector.extract_authors(response_data)
         assert len(authors) == 2
-        assert "Smith John" in authors
-        assert "Doe Jane" in authors
+        assert "Smith, John" in authors
+        assert "Doe, Jane" in authors
 
     def test_extract_publication_date(self):
         """Test PubMed publication date extraction."""

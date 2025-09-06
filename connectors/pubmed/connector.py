@@ -59,7 +59,7 @@ class PubMedConnector(BaseConnector, IConnector):
             raise ValueError("Query cannot be empty")
         if limit < 0:
             raise ValueError("Limit cannot be negative")
-        
+
         params = {"db": "pubmed", "term": query, "retmax": limit, "retmode": "json"}
 
         try:
@@ -89,7 +89,7 @@ class PubMedConnector(BaseConnector, IConnector):
         # Validate inputs
         if not paper_id or not paper_id.strip():
             raise ValueError("Paper ID cannot be empty")
-        
+
         params = {"db": "pubmed", "id": paper_id, "retmode": "xml"}
 
         try:
@@ -153,7 +153,7 @@ class PubMedConnector(BaseConnector, IConnector):
         # Search for papers published since the date
         query = f'("{date_str}"[DP] : "3000"[DP])'
         search_result = await self.search(query, limit=1000)
-        
+
         # Yield each document ID as a separate update
         for doc_id in search_result.get("document_ids", []):
             yield {
